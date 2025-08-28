@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Zenith Marketplace</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f9fafb; padding: 3rem 1rem;">
+        <div class="card" style="width: 100%; max-width: 28rem;">
+            <div style="padding: 1.5rem 1.5rem 0;">
+                <h1 style="text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Sign In</h1>
+                <p style="text-align: center; font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">Welcome back to Zenith Marketplace</p>
+            </div>
+            <div style="padding: 0 1.5rem 1.5rem;">
+                <form id="loginForm" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label for="email" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
+                            Email Address
+                        </label>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            required
+                            style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+                        />
+                    </div>
+
+                    <div>
+                        <label for="password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
+                            Password
+                        </label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+                        />
+                    </div>
+
+                    <div id="message" style="display: none; padding: 0.75rem; border-radius: 0.375rem; font-size: 0.875rem;"></div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
+                        Sign In
+                    </button>
+                </form>
+
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <p style="font-size: 0.875rem; color: #6b7280;">
+                        Don't have an account? 
+                        <a href="register.html" style="font-weight: 500; color: #2563eb; text-decoration: none;">
+                            Create account
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const messageDiv = document.getElementById('message');
+            
+            // Show loading state
+            submitBtn.textContent = 'Signing In...';
+            submitBtn.disabled = true;
+            
+            // Simulate login process
+            setTimeout(() => {
+                // For demo purposes, always show success and redirect
+                messageDiv.style.display = 'block';
+                messageDiv.style.background = '#f0fdf4';
+                messageDiv.style.color = '#166534';
+                messageDiv.style.border = '1px solid #bbf7d0';
+                messageDiv.textContent = 'Login successful! Redirecting...';
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
