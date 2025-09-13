@@ -11,14 +11,11 @@ app.get("/", (req, res) => {
 
 // Add more API routes here as needed
 
+app.get("/api/data", (req, res) => {
+  res.json({ message: "This is your data!", data: [1, 2, 3, 4] });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
-});
-app.get("/", (req, res) => {
-  res.send("Zenith Backend API running!");
-});
-
-app.get("/api/data", (req, res) => {
-  res.json({ message: "This is your data!", data: [1, 2, 3, 4] });
 });
