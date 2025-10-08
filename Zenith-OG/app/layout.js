@@ -3,30 +3,35 @@ import "./globals.css"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { AuthProvider } from "@/components/auth-provider"
-import { PageTransition } from "@/components/page-transition"
-import { ThemeProvider } from "@/components/theme-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Zenith Student Marketplace",
-  description: "A safe, affordable, and accessible marketplace for university and college students in South Africa",
-    generator: 'v0.app'
+  title: "Zenith Student Marketplace - Buy, Sell & Trade Study Materials in South Africa",
+  description: "A safe, affordable, and accessible marketplace for university and college students in South Africa to buy, sell, rent or trade study materials, electronics, and tutoring services.",
+  keywords: "student marketplace, South Africa, university, college, textbooks, study materials, electronics, tutoring, buy, sell, trade",
+  author: "Zenith Student Marketplace",
+  viewport: "width=device-width, initial-scale=1",
+  robots: "index, follow",
+  openGraph: {
+    title: "Zenith Student Marketplace - Student Trading Platform",
+    description: "Join thousands of South African students buying, selling, and trading study materials safely and affordably.",
+    type: "website",
+    locale: "en_ZA",
+  },
+  generator: 'v0.app'
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="light">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <Header />
-            <PageTransition>
-              <main>{children}</main>
-            </PageTransition>
-            <Footer />
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <a href="#main-content" className="skip-link">Skip to main content</a>
+          <Header />
+          <main id="main-content">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )

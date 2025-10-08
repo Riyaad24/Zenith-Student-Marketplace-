@@ -6,25 +6,29 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  avatar     String?
+  phone      String?
+  university String?
+  location   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
-  products    Product[]
-  orders      Order[]
-  cartItems   CartItem[]
-  reviews     Review[]
-  messages    Message[]
-  addresses   Address[]
+  products      Product[]
+  orders        Order[]
+  cartItems     CartItem[]
+  reviews       Review[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  addresses     Address[]
 
   @@map("users")
 }
@@ -47,11 +51,15 @@ model Category {
 model Product {
   id          String   @id @default(cuid())
   title       String
-  description String   @db.Text
-  price       Decimal  @db.Decimal(10, 2)
+  description String
+  price       Float
   image       String?
+  images      String?  // JSON array of image URLs
   condition   String   // new, used, refurbished
   status      String   @default("active") // active, sold, inactive
+  available   Boolean  @default(true)
+  location    String?  // City or area for local pickup
+  university  String?  // Associated university/college
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -89,10 +97,10 @@ model CartItem {
 
 model Order {
   id            String   @id @default(cuid())
-  total         Decimal  @db.Decimal(10, 2)
+  total         Float
   status        String   @default("pending") // pending, confirmed, shipped, delivered, cancelled
-  shippingCost  Decimal  @db.Decimal(10, 2) @default(0)
-  tax           Decimal  @db.Decimal(10, 2) @default(0)
+  shippingCost  Float    @default(0)
+  tax           Float    @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -111,7 +119,7 @@ model Order {
 model OrderItem {
   id       String  @id @default(cuid())
   quantity Int
-  price    Decimal @db.Decimal(10, 2)
+  price    Float
 
   // Foreign keys
   orderId   String
@@ -153,7 +161,7 @@ model Address {
 model Review {
   id        String   @id @default(cuid())
   rating    Int      // 1-5 stars
-  comment   String?  @db.Text
+  comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -171,7 +179,7 @@ model Review {
 
 model Message {
   id        String   @id @default(cuid())
-  content   String   @db.Text
+  content   String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

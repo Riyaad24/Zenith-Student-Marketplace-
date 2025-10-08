@@ -100,7 +100,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; 2024 Zenith Student Marketplace. All rights reserved.</p>
+          <p>&copy; 2025 Zenith Student Marketplace. All rights reserved. Made with ❤️ for South African students.</p>
         </div>
       </div>
     </footer>

@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { signUp } from "@/app/actions/auth"
 import Link from "next/link"
+import Image from "next/image"
+import { InlineLoader } from "@/components/ui/loader"
 
 const universities = [
   "University of Cape Town",
@@ -61,8 +63,28 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 items-center">
+          {/* Image Section - Left Side */}
+          <div className="flex items-center justify-center order-2 lg:order-1">
+            <div className="w-full max-w-2xl">
+              <img
+                src="/register-hero.png"
+                alt="Three diverse students standing in front of university building - perfect illustration for student registration"
+                className="w-full h-auto max-w-full"
+                style={{
+                  display: 'block',
+                  maxWidth: '100%',
+                  height: 'auto'
+                }}
+              />
+            </div>
+          </div>
+          
+          {/* Registration Form - Right Side */}
+          <div className="flex justify-center lg:justify-end order-1 lg:order-2">
+            <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">Create Account</CardTitle>
           <p className="text-center text-sm text-gray-600">Join the Zenith Marketplace</p>
@@ -168,7 +190,7 @@ export default function RegisterPage() {
             )}
 
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? <InlineLoader text="Creating Account..." /> : "Create Account"}
             </Button>
           </form>
 
@@ -179,9 +201,12 @@ export default function RegisterPage() {
                 Sign in
               </Link>
             </p>
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+        </div>
+      </div>
     </div>
   )
 }

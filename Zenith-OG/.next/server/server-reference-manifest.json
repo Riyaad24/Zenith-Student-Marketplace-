@@ -1,0 +1,54 @@
+{
+  "node": {
+    "007c197d25465cdb76a9e228d58e6cc87ee09336b1": {
+      "workers": {
+        "app/register/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Criyaa%5C%5CZenith-Student-Marketplace-%5C%5CZenith-Student-Marketplace-%5C%5CZenith-OG%5C%5Capp%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22007c197d25465cdb76a9e228d58e6cc87ee09336b1%22%2C%22exportedName%22%3A%22signOut%22%7D%2C%7B%22id%22%3A%224011b29a9de0b0e20d7cc411ae6d23da9d82d94892%22%2C%22exportedName%22%3A%22signIn%22%7D%2C%7B%22id%22%3A%22402cfe4ced3753e084f7fdfeea00f40127b1cfea61%22%2C%22exportedName%22%3A%22signUp%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Criyaa%5C%5CZenith-Student-Marketplace-%5C%5CZenith-Student-Marketplace-%5C%5CZenith-OG%5C%5Capp%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22007c197d25465cdb76a9e228d58e6cc87ee09336b1%22%2C%22exportedName%22%3A%22signOut%22%7D%2C%7B%22id%22%3A%224011b29a9de0b0e20d7cc411ae6d23da9d82d94892%22%2C%22exportedName%22%3A%22signIn%22%7D%2C%7B%22id%22%3A%22402cfe4ced3753e084f7fdfeea00f40127b1cfea61%22%2C%22exportedName%22%3A%22signUp%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/register/page": "action-browser",
+        "app/login/page": "action-browser"
+      }
+    },
+    "4011b29a9de0b0e20d7cc411ae6d23da9d82d94892": {
+      "workers": {
+        "app/register/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Criyaa%5C%5CZenith-Student-Marketplace-%5C%5CZenith-Student-Marketplace-%5C%5CZenith-OG%5C%5Capp%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22007c197d25465cdb76a9e228d58e6cc87ee09336b1%22%2C%22exportedName%22%3A%22signOut%22%7D%2C%7B%22id%22%3A%224011b29a9de0b0e20d7cc411ae6d23da9d82d94892%22%2C%22exportedName%22%3A%22signIn%22%7D%2C%7B%22id%22%3A%22402cfe4ced3753e084f7fdfeea00f40127b1cfea61%22%2C%22exportedName%22%3A%22signUp%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Criyaa%5C%5CZenith-Student-Marketplace-%5C%5CZenith-Student-Marketplace-%5C%5CZenith-OG%5C%5Capp%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22007c197d25465cdb76a9e228d58e6cc87ee09336b1%22%2C%22exportedName%22%3A%22signOut%22%7D%2C%7B%22id%22%3A%224011b29a9de0b0e20d7cc411ae6d23da9d82d94892%22%2C%22exportedName%22%3A%22signIn%22%7D%2C%7B%22id%22%3A%22402cfe4ced3753e084f7fdfeea00f40127b1cfea61%22%2C%22exportedName%22%3A%22signUp%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/register/page": "action-browser",
+        "app/login/page": "action-browser"
+      }
+    },
+    "402cfe4ced3753e084f7fdfeea00f40127b1cfea61": {
+      "workers": {
+        "app/register/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Criyaa%5C%5CZenith-Student-Marketplace-%5C%5CZenith-Student-Marketplace-%5C%5CZenith-OG%5C%5Capp%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22007c197d25465cdb76a9e228d58e6cc87ee09336b1%22%2C%22exportedName%22%3A%22signOut%22%7D%2C%7B%22id%22%3A%224011b29a9de0b0e20d7cc411ae6d23da9d82d94892%22%2C%22exportedName%22%3A%22signIn%22%7D%2C%7B%22id%22%3A%22402cfe4ced3753e084f7fdfeea00f40127b1cfea61%22%2C%22exportedName%22%3A%22signUp%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/login/page": {
+          "moduleId": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Criyaa%5C%5CZenith-Student-Marketplace-%5C%5CZenith-Student-Marketplace-%5C%5CZenith-OG%5C%5Capp%5C%5Cactions%5C%5Cauth.ts%22%2C%5B%7B%22id%22%3A%22007c197d25465cdb76a9e228d58e6cc87ee09336b1%22%2C%22exportedName%22%3A%22signOut%22%7D%2C%7B%22id%22%3A%224011b29a9de0b0e20d7cc411ae6d23da9d82d94892%22%2C%22exportedName%22%3A%22signIn%22%7D%2C%7B%22id%22%3A%22402cfe4ced3753e084f7fdfeea00f40127b1cfea61%22%2C%22exportedName%22%3A%22signUp%22%7D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/register/page": "action-browser",
+        "app/login/page": "action-browser"
+      }
+    }
+  },
+  "edge": {},
+  "encryptionKey": "zqmHiR9tWGlRl95D2hHEc7GUbbCSjsIdMeMVub5HniM="
+}
