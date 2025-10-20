@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Account - Zenith Marketplace</title>
+    <title>Sign Up - Zenith Marketplace</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f9fafb; padding: 3rem 1rem;">
-        <div class="card" style="width: 100%; max-width: 28rem;">
+        <div class="card" style="width: 100%; max-width: 32rem;">
             <div style="padding: 1.5rem 1.5rem 0;">
                 <h1 style="text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem;">Create Account</h1>
-                <p style="text-align: center; font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">Join the Zenith Marketplace</p>
+                <p style="text-align: center; font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">Join the Zenith student community</p>
             </div>
             <div style="padding: 0 1.5rem 1.5rem;">
                 <form id="registerForm" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -21,141 +21,126 @@
                             <label for="firstName" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
                                 First Name
                             </label>
-                            <input
-                                id="firstName"
-                                name="firstName"
-                                type="text"
+                            <input 
+                                type="text" 
+                                id="firstName" 
+                                name="firstName" 
                                 required
-                                style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-                            />
+                                style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;"
+                                placeholder="John"
+                            >
                         </div>
                         <div>
                             <label for="lastName" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
                                 Last Name
                             </label>
-                            <input
-                                id="lastName"
-                                name="lastName"
-                                type="text"
+                            <input 
+                                type="text" 
+                                id="lastName" 
+                                name="lastName" 
                                 required
-                                style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-                            />
+                                style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;"
+                                placeholder="Doe"
+                            >
                         </div>
                     </div>
-
+                    
                     <div>
                         <label for="email" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
-                            Email Address
+                            Student Email Address
                         </label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
                             required
-                            style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-                        />
+                            style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;"
+                            placeholder="john.doe@university.ac.za"
+                        >
+                        <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">Use your official student email for verification</p>
                     </div>
-
-                    <div>
-                        <label for="password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
-                            Password
-                        </label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            required
-                            minlength="6"
-                            style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-                        />
-                    </div>
-
+                    
                     <div>
                         <label for="university" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
                             University/College
                         </label>
-                        <select
-                            id="university"
-                            name="university"
+                        <select 
+                            id="university" 
+                            name="university" 
                             required
-                            style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+                            style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; background: white;"
                         >
                             <option value="">Select your institution</option>
-                            <option value="University of Cape Town">University of Cape Town</option>
-                            <option value="University of the Witwatersrand">University of the Witwatersrand</option>
-                            <option value="Stellenbosch University">Stellenbosch University</option>
-                            <option value="University of Pretoria">University of Pretoria</option>
-                            <option value="University of KwaZulu-Natal">University of KwaZulu-Natal</option>
-                            <option value="University of Johannesburg">University of Johannesburg</option>
-                            <option value="Rhodes University">Rhodes University</option>
-                            <option value="North-West University">North-West University</option>
-                            <option value="University of the Free State">University of the Free State</option>
-                            <option value="University of the Western Cape">University of the Western Cape</option>
-                            <option value="Nelson Mandela University">Nelson Mandela University</option>
-                            <option value="University of South Africa (UNISA)">University of South Africa (UNISA)</option>
-                            <option value="Tshwane University of Technology">Tshwane University of Technology</option>
-                            <option value="Cape Peninsula University of Technology">Cape Peninsula University of Technology</option>
-                            <option value="Durban University of Technology">Durban University of Technology</option>
+                            <option value="uct">University of Cape Town</option>
+                            <option value="wits">University of the Witwatersrand</option>
+                            <option value="up">University of Pretoria</option>
+                            <option value="stellenbosch">Stellenbosch University</option>
+                            <option value="ukzn">University of KwaZulu-Natal</option>
+                            <option value="uj">University of Johannesburg</option>
+                            <option value="other">Other</option>
                         </select>
                     </div>
-
+                    
                     <div>
-                        <label for="studentNumber" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
-                            Student Number
+                        <label for="password" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
+                            Password
                         </label>
-                        <input
-                            id="studentNumber"
-                            name="studentNumber"
-                            type="text"
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
                             required
-                            style="margin-top: 0.25rem; display: block; width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
-                        />
+                            style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;"
+                            placeholder="Create a strong password"
+                        >
                     </div>
-
-                    <div id="message" style="display: none; padding: 0.75rem; border-radius: 0.375rem; font-size: 0.875rem;"></div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
+                    
+                    <div>
+                        <label for="confirmPassword" style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 0.25rem;">
+                            Confirm Password
+                        </label>
+                        <input 
+                            type="password" 
+                            id="confirmPassword" 
+                            name="confirmPassword" 
+                            required
+                            style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem;"
+                            placeholder="Confirm your password"
+                        >
+                    </div>
+                    
+                    <div style="font-size: 0.875rem;">
+                        <label style="display: flex; align-items: flex-start; color: #374151; line-height: 1.4;">
+                            <input type="checkbox" required style="margin-right: 0.5rem; margin-top: 0.125rem;">
+                            I agree to the <a href="#" style="color: #7c3aed; text-decoration: none;">Terms of Service</a> and <a href="#" style="color: #7c3aed; text-decoration: none;">Privacy Policy</a>
+                        </label>
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="btn btn-primary submit-btn"
+                        style="width: 100%; padding: 0.75rem; margin-top: 0.5rem;"
+                    >
                         Create Account
                     </button>
                 </form>
-
-                <div style="margin-top: 1.5rem; text-align: center;">
-                    <p style="font-size: 0.875rem; color: #6b7280;">
-                        Already have an account? 
-                        <a href="login.html" style="font-weight: 500; color: #2563eb; text-decoration: none;">
-                            Sign in
-                        </a>
-                    </p>
+                
+                <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: #6b7280;">
+                    Already have an account? 
+                    <a href="login.html" style="color: #7c3aed; text-decoration: none; font-weight: 500;">
+                        Sign in here
+                    </a>
+                </div>
+                
+                <div style="margin-top: 1rem; text-align: center;">
+                    <a href="index.html" style="color: #6b7280; text-decoration: none; font-size: 0.875rem;">
+                        ← Back to home
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-
-    <script>
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const submitBtn = document.getElementById('submitBtn');
-            const messageDiv = document.getElementById('message');
-            
-            // Show loading state
-            submitBtn.textContent = 'Creating Account...';
-            submitBtn.disabled = true;
-            
-            // Simulate registration process
-            setTimeout(() => {
-                // For demo purposes, always show success
-                messageDiv.style.display = 'block';
-                messageDiv.style.background = '#f0fdf4';
-                messageDiv.style.color = '#166534';
-                messageDiv.style.border = '1px solid #bbf7d0';
-                messageDiv.textContent = 'Account created successfully! Please check your email to verify your account.';
-                
-                // Reset form
-                submitBtn.textContent = 'Create Account';
-                submitBtn.disabled = false;
-            }, 2000);
-        });
-    </script>
+    
+    <script src="script.js"></script>
 </body>
 </html>

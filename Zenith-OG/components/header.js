@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Search, Menu, X, ShoppingCart, User, Heart, ChevronDown, BookOpen, MessageSquare, Laptop, Bell } from "lucide-react"
+import ZenithLogo from "@/components/ZenithLogo"
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -14,11 +15,29 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm" style={{ display: 'block', visibility: 'visible' }}>
       <div className="container flex h-16 items-center justify-between px-4 mx-auto max-w-7xl" style={{ minHeight: '64px' }}>
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="h-8 w-8 bg-purple-700 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-sm">Z</span>
+        <Link href="/" className="flex items-center space-x-3 group">
+          <div className="h-10 w-10 flex items-center justify-center">
+            {/* Primary: External SVG file */}
+            <img 
+              src="/logo/zenith-logo.svg" 
+              alt="Zenith Student Marketplace Logo" 
+              className="h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+              width={32}
+              height={32}
+              onError={(e) => {
+                // Fallback: Hide img and show inline SVG component
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'block';
+              }}
+            />
+            {/* Fallback: Inline SVG Component */}
+            <div style={{ display: 'none' }}>
+              <ZenithLogo className="h-8 w-auto transition-transform duration-200 group-hover:scale-105" />
+            </div>
           </div>
-          <span className="font-bold text-xl">Zenith</span>
+          <span className="font-bold text-xl text-gray-900 hidden sm:block group-hover:text-purple-700 transition-colors duration-200">
+            Zenith
+          </span>
         </Link>
 
         {/* Desktop Navigation */}

@@ -1,162 +1,179 @@
--- Enable Row Level Security
-ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
+-- MySQL Database Schema for Zenith Student Marketplace
+-- Note: Row Level Security is not available in MySQL - implement in application layer
 
--- Create users table (extends Supabase auth.users)
-CREATE TABLE public.profiles (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  first_name TEXT,
-  last_name TEXT,
-  university TEXT,
-  location TEXT,
+-- Create database (run separately if needed)
+-- CREATE DATABASE zenith_marketplace CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- USE zenith_marketplace;
+
+-- Create users table (profiles)
+CREATE TABLE profiles (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  university VARCHAR(255),
+  location VARCHAR(255),
   bio TEXT,
-  avatar_url TEXT,
-  phone TEXT,
+  avatar_url VARCHAR(500),
+  phone VARCHAR(50),
   verified BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Create categories table
-CREATE TABLE public.categories (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
+CREATE TABLE categories (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
   description TEXT,
-  icon TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  icon VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create products table
-CREATE TABLE public.products (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  seller_id UUID REFERENCES public.profiles(id) NOT NULL,
-  category_id UUID REFERENCES public.categories(id) NOT NULL,
-  title TEXT NOT NULL,
+CREATE TABLE products (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  seller_id VARCHAR(36) NOT NULL,
+  category_id VARCHAR(36) NOT NULL,
+  title VARCHAR(500) NOT NULL,
   description TEXT NOT NULL,
   price DECIMAL(10,2) NOT NULL,
-  condition TEXT CHECK (condition IN ('new', 'like_new', 'good', 'fair', 'poor')),
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'sold', 'draft', 'inactive')),
-  images TEXT[] DEFAULT '{}',
-  course_code TEXT,
-  institution TEXT,
-  year_level TEXT,
-  subject TEXT,
-  faculty TEXT,
-  file_format TEXT,
-  page_count INTEGER,
-  preview_images TEXT[] DEFAULT '{}',
-  tags TEXT[] DEFAULT '{}',
-  views INTEGER DEFAULT 0,
-  favorites INTEGER DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  condition ENUM('new', 'like_new', 'good', 'fair', 'poor') NOT NULL,
+  status ENUM('active', 'sold', 'draft', 'inactive') DEFAULT 'active',
+  images JSON,
+  course_code VARCHAR(100),
+  institution VARCHAR(255),
+  year_level VARCHAR(50),
+  subject VARCHAR(255),
+  faculty VARCHAR(255),
+  file_format VARCHAR(50),
+  page_count INT,
+  preview_images JSON,
+  tags JSON,
+  views INT DEFAULT 0,
+  favorites INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (seller_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 -- Create favorites table
-CREATE TABLE public.favorites (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) NOT NULL,
-  product_id UUID REFERENCES public.products(id) NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, product_id)
+CREATE TABLE favorites (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  user_id VARCHAR(36) NOT NULL,
+  product_id VARCHAR(36) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_user_product (user_id, product_id),
+  FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 -- Create cart table
-CREATE TABLE public.cart_items (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES public.profiles(id) NOT NULL,
-  product_id UUID REFERENCES public.products(id) NOT NULL,
-  quantity INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, product_id)
+CREATE TABLE cart_items (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  user_id VARCHAR(36) NOT NULL,
+  product_id VARCHAR(36) NOT NULL,
+  quantity INT DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_cart_item (user_id, product_id),
+  FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 -- Create orders table
-CREATE TABLE public.orders (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  buyer_id UUID REFERENCES public.profiles(id) NOT NULL,
-  seller_id UUID REFERENCES public.profiles(id) NOT NULL,
-  product_id UUID REFERENCES public.products(id) NOT NULL,
+CREATE TABLE orders (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  buyer_id VARCHAR(36) NOT NULL,
+  seller_id VARCHAR(36) NOT NULL,
+  product_id VARCHAR(36) NOT NULL,
   amount DECIMAL(10,2) NOT NULL,
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'completed', 'cancelled', 'refunded')),
-  payment_method TEXT,
-  transaction_id TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  status ENUM('pending', 'paid', 'completed', 'cancelled', 'refunded') DEFAULT 'pending',
+  payment_method VARCHAR(100),
+  transaction_id VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (buyer_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (seller_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 -- Create messages table
-CREATE TABLE public.messages (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  sender_id UUID REFERENCES public.profiles(id) NOT NULL,
-  receiver_id UUID REFERENCES public.profiles(id) NOT NULL,
-  product_id UUID REFERENCES public.products(id),
+CREATE TABLE messages (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  sender_id VARCHAR(36) NOT NULL,
+  receiver_id VARCHAR(36) NOT NULL,
+  product_id VARCHAR(36),
   content TEXT NOT NULL,
   read BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (sender_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (receiver_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 -- Create reviews table
-CREATE TABLE public.reviews (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  reviewer_id UUID REFERENCES public.profiles(id) NOT NULL,
-  reviewee_id UUID REFERENCES public.profiles(id) NOT NULL,
-  product_id UUID REFERENCES public.products(id),
-  order_id UUID REFERENCES public.orders(id),
-  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+CREATE TABLE reviews (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  reviewer_id VARCHAR(36) NOT NULL,
+  reviewee_id VARCHAR(36) NOT NULL,
+  product_id VARCHAR(36),
+  order_id VARCHAR(36),
+  rating INT CHECK (rating >= 1 AND rating <= 5),
   comment TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reviewer_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewee_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 
 -- Create tutoring_requests table
-CREATE TABLE public.tutoring_requests (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  student_id UUID REFERENCES public.profiles(id) NOT NULL,
-  tutor_id UUID REFERENCES public.profiles(id),
-  subject TEXT NOT NULL,
-  level TEXT NOT NULL,
+CREATE TABLE tutoring_requests (
+  id VARCHAR(36) NOT NULL PRIMARY KEY DEFAULT (UUID()),
+  student_id VARCHAR(36) NOT NULL,
+  tutor_id VARCHAR(36),
+  subject VARCHAR(255) NOT NULL,
+  level VARCHAR(100) NOT NULL,
   description TEXT NOT NULL,
   budget_min DECIMAL(10,2),
   budget_max DECIMAL(10,2),
-  location_preference TEXT,
-  delivery_method TEXT CHECK (delivery_method IN ('online', 'in_person', 'both')),
-  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'matched', 'in_progress', 'completed', 'cancelled')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  location_preference VARCHAR(255),
+  delivery_method ENUM('online', 'in_person', 'both') NOT NULL,
+  status ENUM('open', 'matched', 'in_progress', 'completed', 'cancelled') DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (student_id) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY (tutor_id) REFERENCES profiles(id) ON DELETE CASCADE
 );
 
--- Enable Row Level Security
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cart_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tutoring_requests ENABLE ROW LEVEL SECURITY;
+-- Create indexes for better performance
+CREATE INDEX idx_products_seller_id ON products(seller_id);
+CREATE INDEX idx_products_category_id ON products(category_id);
+CREATE INDEX idx_products_status ON products(status);
+CREATE INDEX idx_products_created_at ON products(created_at);
+CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX idx_cart_items_user_id ON cart_items(user_id);
+CREATE INDEX idx_orders_buyer_id ON orders(buyer_id);
+CREATE INDEX idx_orders_seller_id ON orders(seller_id);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX idx_messages_receiver_id ON messages(receiver_id);
+CREATE INDEX idx_reviews_reviewer_id ON reviews(reviewer_id);
+CREATE INDEX idx_reviews_reviewee_id ON reviews(reviewee_id);
+CREATE INDEX idx_tutoring_requests_student_id ON tutoring_requests(student_id);
+CREATE INDEX idx_tutoring_requests_status ON tutoring_requests(status);
 
--- Create policies
-CREATE POLICY "Users can view all profiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+-- Note: MySQL does not support Row Level Security (RLS) like PostgreSQL
+-- Security policies must be implemented at the application level
+-- Consider using views with WHERE clauses for data access control
+-- Example security implementations should be added to your API layer
 
-CREATE POLICY "Anyone can view active products" ON public.products FOR SELECT USING (status = 'active');
-CREATE POLICY "Users can insert own products" ON public.products FOR INSERT WITH CHECK (auth.uid() = seller_id);
-CREATE POLICY "Users can update own products" ON public.products FOR UPDATE USING (auth.uid() = seller_id);
+-- Optional: Create views for common queries with security checks
+-- These would need to be implemented with proper user context in your application
 
-CREATE POLICY "Users can manage own favorites" ON public.favorites FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "Users can manage own cart" ON public.cart_items FOR ALL USING (auth.uid() = user_id);
+CREATE VIEW active_products AS
+SELECT * FROM products WHERE status = 'active';
 
-CREATE POLICY "Users can view own orders" ON public.orders FOR SELECT USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
-CREATE POLICY "Users can insert orders as buyer" ON public.orders FOR INSERT WITH CHECK (auth.uid() = buyer_id);
-
-CREATE POLICY "Users can view messages they sent or received" ON public.messages FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
-CREATE POLICY "Users can send messages" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
-
-CREATE POLICY "Anyone can view reviews" ON public.reviews FOR SELECT USING (true);
-CREATE POLICY "Users can create reviews" ON public.reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
-
-CREATE POLICY "Anyone can view tutoring requests" ON public.tutoring_requests FOR SELECT USING (true);
-CREATE POLICY "Users can create own tutoring requests" ON public.tutoring_requests FOR INSERT WITH CHECK (auth.uid() = student_id);
-CREATE POLICY "Users can update own tutoring requests" ON public.tutoring_requests FOR UPDATE USING (auth.uid() = student_id);
+-- Add any additional MySQL-specific optimizations as needed

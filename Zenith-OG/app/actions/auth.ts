@@ -1,74 +1,119 @@
 "use server"
 
-import { supabaseAdmin } from "@/lib/supabase"
-import { redirect } from "next/navigation"
+import AuthService from '../../lib/auth-service';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export async function signUp(formData: FormData) {
-  const email = formData.get("email") as string
-  const password = formData.get("password") as string
-  const firstName = formData.get("firstName") as string
-  const lastName = formData.get("lastName") as string
-  const university = formData.get("university") as string
-  const studentNumber = formData.get("studentNumber") as string
-
   try {
-    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const firstName = formData.get('firstName') as string || '';
+    const lastName = formData.get('lastName') as string || '';
+    const university = formData.get('university') as string || undefined;
+    const phone = formData.get('phone') as string || undefined;
+
+    if (!email || !password) {
+      return { error: 'Email and password are required' };
+    }
+
+    const result = await AuthService.register({
       email,
       password,
-      email_confirm: true,
-    })
+      firstName,
+      lastName,
+      university,
+      phone,
+    });
 
-    if (error) {
-      return { error: error.message }
-    }
+    // Set auth cookie
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 hours
+    });
 
-    // Create profile
-    if (data.user) {
-      const { error: profileError } = await supabaseAdmin.from("profiles").insert({
-        id: data.user.id,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        university,
-        student_number: studentNumber,
-      })
-
-      if (profileError) {
-        return { error: profileError.message }
-      }
-    }
-
-    return { success: true, message: "Account created successfully!" }
-  } catch (error) {
-    return { error: "Failed to create account" }
+    return { success: true, message: 'Account created successfully!', user: result.user };
+  } catch (error: any) {
+    return { error: error.message || 'Registration failed' };
   }
 }
 
 export async function signIn(formData: FormData) {
-  const email = formData.get("email") as string
-  const password = formData.get("password") as string
-
   try {
-    const { error } = await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-    if (error) {
-      return { error: error.message }
+    if (!email || !password) {
+      return { error: 'Email and password are required' };
     }
 
-    redirect("/dashboard")
-  } catch (error) {
-    return { error: "Failed to sign in" }
+    const result = await AuthService.login({
+      email,
+      password,
+    });
+
+    // Set auth cookie
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 hours
+    });
+
+    redirect('/dashboard');
+  } catch (error: any) {
+    return { error: error.message || 'Login failed' };
   }
 }
 
 export async function signOut() {
   try {
-    await supabaseAdmin.auth.signOut()
-    redirect("/")
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (token) {
+      await AuthService.logout(token);
+    }
+
+    // Clear auth cookie
+    cookieStore.set('auth-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+    });
+
+    redirect('/');
+  } catch (error: any) {
+    // Always clear cookie even if logout fails
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+    });
+
+    redirect('/');
+  }
+}
+
+export async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth-token')?.value;
+
+    if (!token) {
+      return null;
+    }
+
+    const user = await AuthService.verifyToken(token);
+    return user;
   } catch (error) {
-    return { error: "Failed to sign out" }
+    return null;
   }
 }

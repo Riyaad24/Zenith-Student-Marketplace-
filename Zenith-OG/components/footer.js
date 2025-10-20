@@ -8,9 +8,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 bg-purple-700 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">Z</span>
+            <div className="flex items-center space-x-3">
+              <div className="h-12 w-12 bg-purple-700 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-lg">Z</span>
               </div>
               <span className="font-bold text-xl">Zenith</span>
             </div>

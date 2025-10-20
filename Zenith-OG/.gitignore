@@ -121,3 +121,62 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/
+
+# Development tools and utilities
+dev-tools/
+*.bat
+start-*.bat
+launch-*.bat
+
+# Legacy files (if any remain)
+*.html
+styles.css
+script.js
+
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+*.code-workspace
+
+# Local development files
+.env.local
+.env.development
+.env.test
+.env*.local
+
+# TypeScript compiled files
+*.js.map
+*.d.ts.map
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# Build artifacts
+.next/
+.nuxt/
+.vercel/
+.netlify/
+dist/
+build/
+out/
+
+# Backup files
+*.backup
+*.bak
+*.tmp

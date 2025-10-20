@@ -2,6 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Splash Screen Styles */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+/* Video Splash Screen Animations */
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Video loading states */
+.video-loading {
+  filter: blur(10px);
+  transform: scale(1.1);
+  opacity: 0;
+}
+
+.video-loaded {
+  filter: blur(0);
+  transform: scale(1);
+  opacity: 1;
+  transition: all 0.8s ease-in-out;
+}
+
+/* Skip Link Accessibility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 10000;
+  border-radius: 4px;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
 /* Enhanced Hover Dropdown Styles */
 .dropdown-container {
   position: relative;
