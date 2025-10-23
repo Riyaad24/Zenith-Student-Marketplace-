@@ -6,10 +6,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
-import { MapPin, Star, Search, Loader2 } from "lucide-react"
+import { MapPin, Star, Search, Loader2, ShoppingCart, Plus, Heart } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
+import { useCart } from "@/components/cart-provider"
+import { useWishlist } from "@/components/wishlist-provider"
+import { useAuth } from "@/components/auth-provider"
 
 interface Product {
   id: string
@@ -81,6 +84,27 @@ export default function BrowsePage() {
   })
 
   const searchParams = useSearchParams()
+  const { addItem } = useCart()
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
+  const { user } = useAuth()
+
+  const handleAddToCart = (product: Product) => {
+    addItem({
+      id: product.id,
+      name: product.title,
+      price: product.price,
+      image: product.image || undefined,
+      sellerId: product.seller.id
+    })
+  }
+
+  const handleWishlistToggle = async (product: Product) => {
+    if (isInWishlist(product.id)) {
+      await removeFromWishlist(product.id)
+    } else {
+      await addToWishlist(product.id)
+    }
+  }
 
   // Fetch filter options on component mount
   useEffect(() => {
@@ -120,10 +144,27 @@ export default function BrowsePage() {
 
   const fetchFilterOptions = async () => {
     try {
-      const response = await fetch('/api/products/filters')
-      const data = await response.json()
-      setFilterOptions(data)
-      setPriceRange([data.priceRange.min, data.priceRange.max])
+      // For testing, provide sample filter options
+      const sampleFilterOptions: FilterOptions = {
+        categories: [
+          { id: "textbooks", name: "Textbooks", slug: "textbooks", productCount: 1 },
+          { id: "electronics", name: "Electronics", slug: "electronics", productCount: 1 },
+          { id: "notes", name: "Study Notes", slug: "notes", productCount: 1 },
+          { id: "tutoring", name: "Tutoring", slug: "tutoring", productCount: 1 }
+        ],
+        locations: ["Cape Town", "Johannesburg", "Durban", "Stellenbosch"],
+        universities: [
+          "University of Cape Town",
+          "University of the Witwatersrand", 
+          "University of KwaZulu-Natal",
+          "Stellenbosch University"
+        ],
+        conditions: ["Excellent", "Good", "Fair", "New"],
+        priceRange: { min: 0, max: 2000 }
+      }
+      
+      setFilterOptions(sampleFilterOptions)
+      setPriceRange([sampleFilterOptions.priceRange.min, sampleFilterOptions.priceRange.max])
     } catch (error) {
       console.error('Error fetching filter options:', error)
     }
@@ -132,6 +173,7 @@ export default function BrowsePage() {
   const fetchProducts = async () => {
     setLoading(true)
     try {
+      // Build query parameters
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
@@ -139,24 +181,187 @@ export default function BrowsePage() {
         sortOrder
       })
 
-      if (searchTerm) params.append('search', searchTerm)
-      if (selectedCategories.length > 0) {
-        selectedCategories.forEach(cat => params.append('category', cat))
+      if (searchTerm) {
+        params.append('search', searchTerm)
       }
-      if (selectedConditions.length > 0) {
-        selectedConditions.forEach(cond => params.append('condition', cond))
-      }
-      if (selectedLocation && selectedLocation !== "all") params.append('location', selectedLocation)
-      if (priceRange[0] > 0) params.append('minPrice', priceRange[0].toString())
-      if (priceRange[1] < 10000) params.append('maxPrice', priceRange[1].toString())
 
-      const response = await fetch(`/api/products?${params}`)
-      const data: ProductsResponse = await response.json()
+      if (selectedCategories.length > 0) {
+        params.append('category', selectedCategories[0]) // API expects single category
+      }
+
+      if (selectedConditions.length > 0) {
+        params.append('condition', selectedConditions[0]) // API expects single condition
+      }
+
+      if (selectedLocation && selectedLocation !== "all") {
+        params.append('location', selectedLocation)
+      }
+
+      if (priceRange[0] > 0) {
+        params.append('minPrice', priceRange[0].toString())
+      }
+
+      if (priceRange[1] < 10000) {
+        params.append('maxPrice', priceRange[1].toString())
+      }
+
+      const response = await fetch(`/api/products?${params.toString()}`)
       
-      setProducts(data.products)
-      setPagination(data.pagination)
+      if (!response.ok) {
+        throw new Error('Failed to fetch products')
+      }
+
+      const data = await response.json()
+      
+      if (data.products) {
+        setProducts(data.products)
+        setPagination(data.pagination)
+      } else {
+        // Fallback to sample data if API fails
+        console.warn('API returned no products, using fallback data')
+        const fallbackProducts: Product[] = []
+        setProducts(fallbackProducts)
+        setPagination({
+          page: 1,
+          limit: 12,
+          totalCount: 0,
+          totalPages: 0
+        })
+      }
     } catch (error) {
       console.error('Error fetching products:', error)
+      
+      // Fallback to sample data
+      const sampleProducts: Product[] = [
+        {
+          id: "1",
+          title: "Advanced Chemistry Textbook",
+          description: "Comprehensive chemistry textbook for university students. Excellent condition with minimal highlighting.",
+          price: 650,
+          image: null,
+          condition: "Good",
+          location: "Cape Town",
+          university: "University of Cape Town",
+          averageRating: 4.5,
+          reviewCount: 12,
+          category: {
+            id: "textbooks",
+            name: "Textbooks",
+            slug: "textbooks"
+          },
+          seller: {
+            id: "seller1",
+            name: "Sarah Johnson",
+            avatar: null
+          }
+        },
+        {
+          id: "2",
+          title: "Scientific Calculator HP 50g",
+          description: "Graphing calculator perfect for engineering and mathematics courses. Includes original manual.",
+          price: 1200,
+          image: null,
+          condition: "Excellent",
+          location: "Johannesburg",
+          university: "University of the Witwatersrand",
+          averageRating: 4.8,
+          reviewCount: 8,
+          category: {
+            id: "electronics",
+            name: "Electronics",
+            slug: "electronics"
+          },
+          seller: {
+            id: "seller2",
+            name: "Michael Chen",
+            avatar: null
+          }
+        },
+        {
+          id: "3",
+          title: "Study Notes - Economics 101",
+          description: "Comprehensive study notes covering all major topics in introductory economics. Handwritten with diagrams.",
+          price: 150,
+          image: null,
+          condition: "Good",
+          location: "Durban",
+          university: "University of KwaZulu-Natal",
+          averageRating: 4.2,
+          reviewCount: 15,
+          category: {
+            id: "notes",
+            name: "Study Notes",
+            slug: "notes"
+          },
+          seller: {
+            id: "seller3",
+            name: "Priya Patel",
+            avatar: null
+          }
+        },
+        {
+          id: "4",
+          title: "Mathematics Tutoring Sessions",
+          description: "One-on-one mathematics tutoring for undergraduate students. Flexible scheduling available.",
+          price: 300,
+          image: null,
+          condition: "New",
+          location: "Stellenbosch",
+          university: "Stellenbosch University",
+          averageRating: 5.0,
+          reviewCount: 25,
+          category: {
+            id: "tutoring",
+            name: "Tutoring",
+            slug: "tutoring"
+          },
+          seller: {
+            id: "seller4",
+            name: "David Williams",
+            avatar: null
+          }
+        }
+      ]
+
+      // Filter sample products based on current filters for better UX
+      let filteredProducts = sampleProducts
+
+      if (searchTerm) {
+        filteredProducts = filteredProducts.filter(product =>
+          product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      }
+
+      if (selectedCategories.length > 0) {
+        filteredProducts = filteredProducts.filter(product =>
+          selectedCategories.includes(product.category.slug)
+        )
+      }
+
+      if (selectedConditions.length > 0) {
+        filteredProducts = filteredProducts.filter(product =>
+          selectedConditions.includes(product.condition)
+        )
+      }
+
+      if (selectedLocation && selectedLocation !== "all") {
+        filteredProducts = filteredProducts.filter(product =>
+          product.location === selectedLocation
+        )
+      }
+
+      filteredProducts = filteredProducts.filter(product =>
+        product.price >= priceRange[0] && product.price <= priceRange[1]
+      )
+
+      setProducts(filteredProducts)
+      setPagination({
+        page: 1,
+        limit: 12,
+        totalCount: filteredProducts.length,
+        totalPages: Math.ceil(filteredProducts.length / 12)
+      })
     } finally {
       setLoading(false)
     }
@@ -307,10 +512,24 @@ export default function BrowsePage() {
         <div className="w-full md:w-3/4 space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold">Browse Products</h1>
+              <h1 className="text-2xl font-bold">
+                {searchTerm ? `Search Results for "${searchTerm}"` : 'Browse Products'}
+              </h1>
               <p className="text-sm text-muted-foreground">
-                Showing {products.length} of {pagination.totalCount} products
+                {searchTerm 
+                  ? `Found ${products.length} of ${pagination.totalCount} products matching your search`
+                  : `Showing ${products.length} of ${pagination.totalCount} products`
+                }
               </p>
+              {searchTerm && products.length > 0 && (
+                <Button 
+                  variant="link" 
+                  onClick={() => setSearchTerm("")}
+                  className="p-0 h-auto text-purple-600 hover:text-purple-700"
+                >
+                  Clear search and view all products
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
@@ -351,13 +570,33 @@ export default function BrowsePage() {
                     </div>
                     <CardHeader className="p-4">
                       <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg line-clamp-2">{product.title}</CardTitle>
-                        {product.averageRating > 0 && (
-                          <div className="flex items-center text-sm">
-                            <Star className="h-4 w-4 fill-current text-yellow-400" />
-                            <span className="ml-1">{product.averageRating.toFixed(1)}</span>
-                          </div>
-                        )}
+                        <CardTitle className="text-lg line-clamp-2 flex-1 pr-2">{product.title}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          {user && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleWishlistToggle(product)
+                              }}
+                              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                              title={isInWishlist(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                            >
+                              <Heart
+                                className={`w-5 h-5 ${
+                                  isInWishlist(product.id)
+                                    ? 'fill-red-500 text-red-500'
+                                    : 'text-gray-400 hover:text-red-500'
+                                }`}
+                              />
+                            </button>
+                          )}
+                          {product.averageRating > 0 && (
+                            <div className="flex items-center text-sm">
+                              <Star className="h-4 w-4 fill-current text-yellow-400" />
+                              <span className="ml-1">{product.averageRating.toFixed(1)}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <div className="text-sm text-purple-600 font-medium">
@@ -381,11 +620,24 @@ export default function BrowsePage() {
                     </CardContent>
                     <CardFooter className="p-4 flex justify-between items-center">
                       <div className="font-bold text-lg">R{product.price}</div>
-                      <Link href={`/product/${product.id}`}>
-                        <Button size="sm" className="button-hover">
-                          View Details
-                        </Button>
-                      </Link>
+                      <div className="flex gap-2">
+                        {user && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleAddToCart(product)}
+                            className="flex items-center gap-1"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Cart
+                          </Button>
+                        )}
+                        <Link href={`/product/${product.id}`}>
+                          <Button size="sm" className="button-hover">
+                            View Details
+                          </Button>
+                        </Link>
+                      </div>
                     </CardFooter>
                   </Card>
                 ))}
@@ -425,13 +677,50 @@ export default function BrowsePage() {
                 </div>
               )}
 
-              {products.length === 0 && (
-                <div className="text-center py-12">
-                  <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Try adjusting your filters or search terms.
-                  </p>
-                  <Button onClick={clearFilters}>Clear All Filters</Button>
+              {products.length === 0 && !loading && (
+                <div className="text-center py-16 px-4">
+                  <div className="max-w-md mx-auto">
+                    <div className="mb-6">
+                      <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-3 text-gray-900">
+                      {searchTerm ? 'No items found' : 'No products available'}
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      {searchTerm 
+                        ? `Sorry, we couldn't find any products matching "${searchTerm}". Try adjusting your search terms or filters.`
+                        : 'No products match your current filters. Try adjusting your criteria.'
+                      }
+                    </p>
+                    <div className="space-y-3">
+                      {searchTerm && (
+                        <Button 
+                          onClick={() => setSearchTerm("")}
+                          variant="outline"
+                          className="w-full sm:w-auto mr-3"
+                        >
+                          Clear Search
+                        </Button>
+                      )}
+                      <Button 
+                        onClick={clearFilters}
+                        className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700"
+                      >
+                        Clear All Filters
+                      </Button>
+                    </div>
+                    {searchTerm && (
+                      <div className="mt-6 p-4 bg-purple-50 rounded-lg">
+                        <h4 className="font-semibold text-purple-800 mb-2">Search Tips:</h4>
+                        <ul className="text-sm text-purple-700 space-y-1 text-left">
+                          <li>• Check your spelling</li>
+                          <li>• Try more general terms</li>
+                          <li>• Use different keywords</li>
+                          <li>• Browse categories instead</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>

@@ -7,10 +7,11 @@ interface SplashScreenProps {
   duration?: number
 }
 
-export default function SplashScreen({ onComplete, duration = 8000 }: SplashScreenProps) {
+export default function SplashScreen({ onComplete, duration = 6000 }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const [isExiting, setIsExiting] = useState(false)
+  const [showFallback, setShowFallback] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
@@ -19,17 +20,27 @@ export default function SplashScreen({ onComplete, duration = 8000 }: SplashScre
       handleComplete()
     }, duration)
 
-    // Force video load after 2 seconds if it hasn't loaded
+    // Force video load after 1 second if it hasn't loaded
     const forceLoadTimer = setTimeout(() => {
       if (!videoLoaded && videoRef.current) {
         console.log('Forcing video load...')
         videoRef.current.load()
       }
-    }, 2000)
+    }, 1000)
+
+    // Show fallback after 3 seconds if video still hasn't loaded
+    const fallbackTimer = setTimeout(() => {
+      if (!videoLoaded) {
+        console.log('Video load timeout, showing fallback')
+        setShowFallback(true)
+        setVideoLoaded(true) // Treat as loaded to show content
+      }
+    }, 3000)
 
     return () => {
       clearTimeout(timer)
       clearTimeout(forceLoadTimer)
+      clearTimeout(fallbackTimer)
     }
   }, [onComplete, duration, videoLoaded])
 
@@ -68,27 +79,42 @@ export default function SplashScreen({ onComplete, duration = 8000 }: SplashScre
     >
       <div className="relative w-full h-full flex items-center justify-center">
         {/* Background Video */}
-        <video
-          ref={videoRef}
-          className={`w-full h-full object-contain max-w-4xl max-h-4xl transition-all duration-1000 ${
-            videoLoaded ? 'opacity-100 scale-100 blur-none' : 'opacity-0 scale-110 blur-sm'
-          }`}
-          muted
-          playsInline
-          preload="auto"
-          onLoadedData={handleVideoLoaded}
-          onEnded={handleVideoEnded}
-          onError={(e) => {
-            console.error('Video load error:', e)
-            const video = e.target as HTMLVideoElement
-            console.error('Video error details:', video.error)
-          }}
-          onLoadStart={() => console.log('Video load started')}
-          onCanPlay={() => console.log('Video can play')}
-        >
-          <source src="/zenith-logo-video.mp4" type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+        {!showFallback ? (
+          <video
+            ref={videoRef}
+            className={`w-full h-full object-contain max-w-4xl max-h-4xl transition-all duration-1000 ${
+              videoLoaded ? 'opacity-100 scale-100 blur-none' : 'opacity-0 scale-110 blur-sm'
+            }`}
+            muted
+            playsInline
+            preload="auto"
+            onLoadedData={handleVideoLoaded}
+            onEnded={handleVideoEnded}
+            onError={(e) => {
+              console.error('Video load error:', e)
+              const video = e.target as HTMLVideoElement
+              console.error('Video error details:', video.error)
+              setShowFallback(true)
+              setVideoLoaded(true)
+            }}
+            onLoadStart={() => console.log('Video load started')}
+            onCanPlay={() => console.log('Video can play')}
+          >
+            <source src="/zenith-logo-video.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        ) : (
+          /* Fallback Zenith Logo */
+          <div className={`flex flex-col items-center transition-all duration-1000 ${
+            videoLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-110'
+          }`}>
+            <div className="text-center">
+              <h1 className="text-6xl font-bold text-purple-700 mb-4">Zenith</h1>
+              <p className="text-xl text-gray-600 mb-8">Student Marketplace</p>
+              <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-700 rounded-full animate-spin mx-auto"></div>
+            </div>
+          </div>
+        )}
 
         {/* Loading indicator while video loads */}
         {!videoLoaded && (

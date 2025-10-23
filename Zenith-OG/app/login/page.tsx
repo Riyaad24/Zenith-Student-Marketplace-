@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { signIn } from "@/app/actions/auth"
@@ -9,6 +11,8 @@ import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
 
 export default function LoginPage() {
+  const router = useRouter()
+  const { refreshUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -16,10 +20,22 @@ export default function LoginPage() {
     setLoading(true)
     setMessage(null)
 
-    const result = await signIn(formData)
+    try {
+      const result = await signIn(formData)
 
-    if (result?.error) {
-      setMessage({ type: "error", text: result.error })
+      if (result?.error) {
+        setMessage({ type: "error", text: result.error })
+      } else if (result?.success) {
+        setMessage({ type: "success", text: "Login successful! Redirecting..." })
+        // Refresh auth state
+        refreshUser()
+        // Redirect to home page after successful login
+        setTimeout(() => {
+          router.push(result.redirectTo || '/')
+        }, 1000)
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "An unexpected error occurred" })
     }
 
     setLoading(false)
@@ -32,7 +48,7 @@ export default function LoginPage() {
         {/* Welcome Text Section */}
         <div className="px-12 pt-12 pb-8 text-gray-800 z-10">
           <h1 className="text-4xl font-bold mb-4">Welcome Back to Zenith</h1>     
-          <p className="text-xl mb-8">Your student marketplace for textbooks, notes, electronics, and tutoring</p>
+          <p className="text-xl mb-8">Your South African student marketplace for textbooks, notes, electronics, and tutoring</p>
           <div className="space-y-3 text-lg">
             <div className="flex items-center">
               <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
@@ -72,7 +88,7 @@ export default function LoginPage() {
           <form action={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
-                Email Address
+                Student Email Address
               </label>
               <input
                 id="email"
@@ -80,7 +96,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 className="block w-full px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
-                placeholder="Enter your email"
+                placeholder="e.g., 123456789@uct.ac.za or 987654321@wits.ac.za"
               />
             </div>
 

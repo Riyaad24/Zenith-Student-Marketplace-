@@ -1,29 +1,182 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Camera, Edit, MapPin, MessageSquare, Package, ShoppingBag, Star, User } from "lucide-react"
+import { Camera, Edit, MapPin, MessageSquare, Package, ShoppingBag, Star, User, Shield } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { FileUpload } from "@/components/ui/file-upload"
+import { VerificationBadge, VerificationShield } from "@/components/ui/verification-badge"
+
+interface UserProfile {
+  id: string
+  email: string
+  name: string
+  firstName?: string
+  lastName?: string
+  avatar?: string | null
+  phone?: string
+  university?: string
+  location?: string
+  bio?: string
+  verified: boolean
+  joinedDate: string
+  // Verification fields
+  profilePicture?: string | null
+  studentCardImage?: string | null
+  idDocumentImage?: string | null
+  documentsUploaded: boolean
+  adminVerified: boolean
+  verificationNotes?: string | null
+  verifiedAt?: string | null
+  stats: {
+    listings: number
+    totalListings: number
+    sales: number
+    rating: number
+  }
+}
 
 export default function AccountPage() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("profile")
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  // Mock user data
-  const user = {
-    name: "John Doe",
-    email: "john.doe@university.ac.za",
-    university: "University of Cape Town",
-    joinedDate: "March 2023",
-    location: "Cape Town",
-    avatar: null,
-    listings: 5,
-    sales: 12,
-    rating: 4.8,
+  // Form state
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    university: '',
+    location: '',
+    bio: '',
+    phone: ''
+  })
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+      return
+    }
+  }, [user, loading, router])
+
+  // Fetch extended profile data
+  useEffect(() => {
+    if (user) {
+      fetchProfile()
+    }
+  }, [user])
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch('/api/profile', {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setProfile(data.user)
+        setFormData({
+          firstName: data.user.firstName || '',
+          lastName: data.user.lastName || '',
+          university: data.user.university || '',
+          location: data.user.location || '',
+          bio: data.user.bio || '',
+          phone: data.user.phone || ''
+        })
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error)
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const handleFileUpload = (type: 'profile' | 'studentCard' | 'idDocument', url: string) => {
+    setProfile(prev => {
+      if (!prev) return null
+      
+      const updated = { ...prev }
+      
+      if (type === 'profile') {
+        updated.profilePicture = url
+        updated.avatar = url
+      } else if (type === 'studentCard') {
+        updated.studentCardImage = url
+      } else if (type === 'idDocument') {
+        updated.idDocumentImage = url
+      }
+      
+      // Check if all documents are uploaded
+      const hasAllDocs = (updated.profilePicture && updated.studentCardImage && updated.idDocumentImage)
+      updated.documentsUploaded = hasAllDocs || false
+      
+      return updated
+    })
+    
+    // Refresh profile data from server
+    fetchProfile()
+  }
+
+  const handleSaveProfile = async () => {
+    if (!profile) return
+    
+    setSaving(true)
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setProfile(prev => prev ? { ...prev, ...data.user } : null)
+        alert('Profile updated successfully!')
+      } else {
+        alert('Failed to update profile')
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      alert('Failed to update profile')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading || profileLoading) {
+    return (
+      <div className="container px-4 md:px-6 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading profile...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="container px-4 md:px-6 py-8">
+        <div className="text-center">
+          <p className="text-gray-600">Unable to load profile data</p>
+        </div>
+      </div>
+    )
   }
 
   // Mock listings data
@@ -88,50 +241,66 @@ export default function AccountPage() {
             <CardContent className="p-6">
               <div className="flex flex-col items-center text-center">
                 <div className="relative mb-4">
-                  <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
-                    {user.avatar ? (
+                  <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    {(profile.profilePicture || profile.avatar) ? (
                       <Image
-                        src={user.avatar || "/placeholder.svg"}
-                        alt={user.name}
-                        fill
-                        className="rounded-full object-cover"
+                        src={profile.profilePicture || profile.avatar || "/placeholder.svg"}
+                        alt={profile.name}
+                        width={96}
+                        height={96}
+                        className="rounded-full object-cover w-full h-full"
                       />
                     ) : (
                       <User className="h-12 w-12 text-gray-600" />
                     )}
                   </div>
-                  <Button variant="outline" size="icon" className="absolute bottom-0 right-0 h-8 w-8 rounded-full">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                    onClick={() => setActiveTab("verification")}
+                  >
                     <Camera className="h-4 w-4" />
                   </Button>
                 </div>
-                <h2 className="text-xl font-bold">{user.name}</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  {profile.name || 'No name set'}
+                  <VerificationShield 
+                    adminVerified={profile.adminVerified} 
+                    documentsUploaded={profile.documentsUploaded}
+                    size="md"
+                  />
+                </h2>
                 <div className="flex items-center justify-center mt-1 text-sm text-muted-foreground">
                   <MapPin className="h-3 w-3 mr-1" />
-                  <span>{user.location}</span>
+                  <span>{profile.location || 'Location not set'}</span>
                 </div>
                 <div className="flex items-center justify-center mt-1 text-sm">
                   <Star className="h-3 w-3 fill-current text-yellow-400 mr-1" />
                   <span>
-                    {user.rating} • Joined {user.joinedDate}
+                    {profile.stats.rating} • Joined {profile.joinedDate}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 w-full mt-4">
                   <div className="text-center">
-                    <div className="font-bold">{user.listings}</div>
+                    <div className="font-bold">{profile.stats.listings}</div>
                     <div className="text-xs text-muted-foreground">Listings</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-bold">{user.sales}</div>
+                    <div className="font-bold">{profile.stats.sales}</div>
                     <div className="text-xs text-muted-foreground">Sales</div>
                   </div>
                   <div className="text-center">
-                    <div className="font-bold">{user.rating}</div>
+                    <div className="font-bold">{profile.stats.rating}</div>
                     <div className="text-xs text-muted-foreground">Rating</div>
                   </div>
                 </div>
-                <Button className="w-full mt-4 bg-purple-700 hover:bg-purple-800">
+                <Button 
+                  className="w-full mt-4 bg-purple-700 hover:bg-purple-800"
+                  onClick={() => setActiveTab("verification")}
+                >
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
+                  Manage Verification
                 </Button>
               </div>
             </CardContent>
@@ -145,6 +314,14 @@ export default function AccountPage() {
             >
               <User className="h-4 w-4 mr-2" />
               Profile
+            </Button>
+            <Button
+              variant={activeTab === "verification" ? "default" : "ghost"}
+              className={`w-full justify-start ${activeTab === "verification" ? "bg-purple-700 hover:bg-purple-800" : ""}`}
+              onClick={() => setActiveTab("verification")}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Verification
             </Button>
             <Button
               variant={activeTab === "listings" ? "default" : "ghost"}
@@ -182,36 +359,167 @@ export default function AccountPage() {
                 <CardDescription>Manage your account details and preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" defaultValue={user.name} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input 
+                      id="firstName" 
+                      value={formData.firstName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input 
+                      id="lastName" 
+                      value={formData.lastName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" defaultValue={user.email} />
+                  <Input 
+                    id="email" 
+                    value={profile.email} 
+                    disabled 
+                    className="bg-gray-50 text-gray-500"
+                  />
+                  <p className="text-xs text-gray-500">Email cannot be changed</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input 
+                    id="phone" 
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="e.g., +27 123 456 7890"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="university">University/College</Label>
-                  <Input id="university" defaultValue={user.university} />
+                  <Input 
+                    id="university" 
+                    value={formData.university}
+                    onChange={(e) => setFormData(prev => ({ ...prev, university: e.target.value }))}
+                    placeholder="e.g., University of Cape Town"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input id="location" defaultValue={user.location} />
+                  <Input 
+                    id="location" 
+                    value={formData.location}
+                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="e.g., Cape Town, Western Cape"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
                   <textarea
                     id="bio"
+                    value={formData.bio}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Tell other users about yourself..."
                   />
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline">Cancel</Button>
-                <Button className="bg-purple-700 hover:bg-purple-800">Save Changes</Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setFormData({
+                    firstName: profile.firstName || '',
+                    lastName: profile.lastName || '',
+                    university: profile.university || '',
+                    location: profile.location || '',
+                    bio: profile.bio || '',
+                    phone: profile.phone || ''
+                  })}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-purple-700 hover:bg-purple-800"
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </CardFooter>
             </Card>
+          )}
+
+          {activeTab === "verification" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account Verification</CardTitle>
+                  <CardDescription>
+                    Upload your documents to verify your student status and gain full access to the marketplace
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-6">
+                    <VerificationBadge
+                      documentsUploaded={profile.documentsUploaded}
+                      adminVerified={profile.adminVerified}
+                      verifiedAt={profile.verifiedAt}
+                      size="lg"
+                    />
+                  </div>
+
+                  {profile.verificationNotes && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Message from Zenith Support:</h4>
+                      <p className="text-blue-800">{profile.verificationNotes}</p>
+                    </div>
+                  )}
+
+                  <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+                    <FileUpload
+                      type="profile"
+                      currentFile={profile.profilePicture}
+                      onUploadSuccess={(url) => handleFileUpload('profile', url)}
+                      title="Profile Picture"
+                      description="Upload a clear photo of yourself"
+                      acceptedFormats="JPEG, PNG, WebP"
+                      maxSize="5MB"
+                    />
+
+                    <FileUpload
+                      type="studentCard"
+                      currentFile={profile.studentCardImage}
+                      onUploadSuccess={(url) => handleFileUpload('studentCard', url)}
+                      title="Student Card"
+                      description="Upload a photo of your student card"
+                      acceptedFormats="JPEG, PNG, WebP, PDF"
+                      maxSize="10MB"
+                    />
+
+                    <FileUpload
+                      type="idDocument"
+                      currentFile={profile.idDocumentImage}
+                      onUploadSuccess={(url) => handleFileUpload('idDocument', url)}
+                      title="ID Document"
+                      description="Upload a photo of your South African ID"
+                      acceptedFormats="JPEG, PNG, WebP, PDF"
+                      maxSize="10MB"
+                    />
+                  </div>
+
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-2">Verification Process:</h4>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li>1. Upload all three required documents (profile picture, student card, and ID)</li>
+                      <li>2. Our support team will review your documents within 24-48 hours</li>
+                      <li>3. Once verified, you'll get a green verification badge on your profile</li>
+                      <li>4. Verified students get priority in search results and buyer trust</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {activeTab === "listings" && (

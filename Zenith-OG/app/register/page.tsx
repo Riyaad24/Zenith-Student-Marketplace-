@@ -7,6 +7,7 @@ import { signUp } from "@/app/actions/auth"
 import Link from "next/link"
 import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
+import { validateStudentEmail, validateSAPhoneNumber, getInstitutionName } from "@/lib/validation"
 
 const universities = [
   "University of Cape Town",
@@ -46,12 +47,83 @@ const universities = [
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    university: ''
+  })
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({})
 
-  async function handleSubmit(formData: FormData) {
+  // Real-time validation
+  const validateField = (name: string, value: string) => {
+    const errors = { ...validationErrors }
+    
+    switch (name) {
+      case 'email':
+        const emailValidation = validateStudentEmail(value)
+        if (!emailValidation.isValid) {
+          errors.email = emailValidation.error || 'Invalid email'
+        } else {
+          delete errors.email
+          // Auto-fill university if detected from email
+          const institution = getInstitutionName(value)
+          if (institution) {
+            setFormData(prev => ({ ...prev, university: institution }))
+          }
+        }
+        break
+      
+      case 'phone':
+        if (value) {
+          const phoneValidation = validateSAPhoneNumber(value)
+          if (!phoneValidation.isValid) {
+            errors.phone = phoneValidation.error || 'Invalid phone number'
+          } else {
+            delete errors.phone
+          }
+        }
+        break
+    }
+    
+    setValidationErrors(errors)
+  }
+
+  const handleInputChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }))
+    validateField(name, value)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
     setLoading(true)
     setMessage(null)
 
-    const result = await signUp(formData)
+    // Final validation before submission
+    const emailValidation = validateStudentEmail(formData.email)
+    const phoneValidation = formData.phone ? validateSAPhoneNumber(formData.phone) : { isValid: true }
+
+    if (!emailValidation.isValid || !phoneValidation.isValid) {
+      setMessage({ 
+        type: "error", 
+        text: "Please fix the validation errors before submitting" 
+      })
+      setLoading(false)
+      return
+    }
+
+    // Create FormData for server action
+    const submitData = new FormData()
+    submitData.append('firstName', formData.firstName)
+    submitData.append('lastName', formData.lastName)
+    submitData.append('email', formData.email)
+    submitData.append('phone', phoneValidation.formatted || formData.phone)
+    submitData.append('password', formData.password)
+    submitData.append('university', formData.university)
+
+    const result = await signUp(submitData)
 
     if (result.error) {
       setMessage({ type: "error", text: result.error })
@@ -87,10 +159,10 @@ export default function RegisterPage() {
             <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">Create Account</CardTitle>
-          <p className="text-center text-sm text-gray-600">Join the Zenith Marketplace</p>
+          <p className="text-center text-sm text-gray-600">Join the South African Student Marketplace</p>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
@@ -101,7 +173,9 @@ export default function RegisterPage() {
                   name="firstName"
                   type="text"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />
               </div>
               <div>
@@ -113,22 +187,58 @@ export default function RegisterPage() {
                   name="lastName"
                   type="text"
                   required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                 />
               </div>
             </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
+                Student Email Address
               </label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="e.g., 123456789@uct.ac.za or 987654321@wits.ac.za"
+                className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 ${
+                  validationErrors.email ? 'border-red-300' : 'border-gray-300'
+                }`}
               />
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Use your official student email with student number only (e.g., 123456789@university.ac.za)
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                Phone Number
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                placeholder="+27123456789"
+                className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 ${
+                  validationErrors.phone ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {validationErrors.phone && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                South African number starting with +27
+              </p>
             </div>
 
             <div>
@@ -141,7 +251,9 @@ export default function RegisterPage() {
                 type="password"
                 required
                 minLength={6}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               />
             </div>
 
@@ -153,7 +265,9 @@ export default function RegisterPage() {
                 id="university"
                 name="university"
                 required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value={formData.university}
+                onChange={(e) => handleInputChange('university', e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="">Select your institution</option>
                 {universities.map((uni) => (
@@ -162,19 +276,6 @@ export default function RegisterPage() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label htmlFor="studentNumber" className="block text-sm font-medium text-gray-700">
-                Student Number
-              </label>
-              <input
-                id="studentNumber"
-                name="studentNumber"
-                type="text"
-                required
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
             </div>
 
             {message && (
@@ -189,7 +290,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button type="submit" disabled={loading} className="w-full bg-purple-700 hover:bg-purple-800">
               {loading ? <InlineLoader text="Creating Account..." /> : "Create Account"}
             </Button>
           </form>
@@ -197,7 +298,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
-              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link href="/login" className="font-medium text-purple-600 hover:text-purple-500">
                 Sign in
               </Link>
             </p>

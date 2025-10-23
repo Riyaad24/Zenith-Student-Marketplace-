@@ -41,15 +41,13 @@ export async function GET(request: NextRequest) {
 
     if (location && location !== 'all') {
       where.location = {
-        contains: location,
-        mode: 'insensitive'
+        contains: location
       }
     }
 
     if (university && university !== 'all') {
       where.university = {
-        contains: university,
-        mode: 'insensitive'
+        contains: university
       }
     }
 
@@ -57,14 +55,12 @@ export async function GET(request: NextRequest) {
       where.OR = [
         {
           title: {
-            contains: search,
-            mode: 'insensitive'
+            contains: search
           }
         },
         {
           description: {
-            contains: search,
-            mode: 'insensitive'
+            contains: search
           }
         }
       ]
@@ -93,7 +89,8 @@ export async function GET(request: NextRequest) {
           seller: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               avatar: true
             }
           },
@@ -117,16 +114,23 @@ export async function GET(request: NextRequest) {
       })
     ])
 
-    // Calculate average rating for each product
+    // Calculate average rating for each product and format seller name
     const productsWithRating = products.map((product: any) => ({
       ...product,
       averageRating: product.reviews.length > 0 
         ? product.reviews.reduce((sum: number, review: any) => sum + review.rating, 0) / product.reviews.length
         : 0,
-      reviewCount: product._count.reviews
+      reviewCount: product._count.reviews,
+      seller: {
+        ...product.seller,
+        name: product.seller.firstName && product.seller.lastName 
+          ? `${product.seller.firstName} ${product.seller.lastName}`
+          : product.seller.firstName || 'Anonymous User'
+      }
     }))
 
     return NextResponse.json({
+      success: true,
       products: productsWithRating,
       pagination: {
         page,

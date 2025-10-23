@@ -64,7 +64,7 @@ export async function signIn(formData: FormData) {
       maxAge: 60 * 60 * 24, // 24 hours
     });
 
-    redirect('/dashboard');
+    return { success: true, redirectTo: '/' };
   } catch (error: any) {
     return { error: error.message || 'Login failed' };
   }

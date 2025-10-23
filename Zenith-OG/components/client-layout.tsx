@@ -1,6 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AuthProvider } from './auth-provider'
+import { CartProvider } from './cart-provider'
+import { WishlistProvider } from './wishlist-provider'
 import SplashScreen from './splash-screen-video'
 
 interface ClientLayoutProps {
@@ -13,9 +16,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   useEffect(() => {
-    // TEMPORARILY DISABLED - Always show splash screen for testing
-    // const hasSeenSplash = sessionStorage.getItem('zenith-splash-seen')
+    // Force splash screen to always show - clear any existing session storage
+    sessionStorage.removeItem('zenith-splash-seen')
     const hasSeenSplash = false // Force splash screen to always show for testing
+    
+    console.log('ClientLayout mounted - showing splash screen')
     
     if (hasSeenSplash) {
       // Skip splash screen if already seen in this session
@@ -25,6 +30,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     } else {
       // Show splash screen for first-time visitors
       setIsInitialLoad(true)
+      setIsLoading(true)
     }
 
     // Also check if page is already loaded
@@ -62,19 +68,25 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     return (
       <SplashScreen 
         onComplete={handleSplashComplete}
-        duration={8000} // 8 seconds to allow video to play and debug
+        duration={6000} // 6 seconds for optimal experience
       />
     )
   }
 
   // Show main content with fade-in animation
   return (
-    <div 
-      className={`min-h-screen transition-opacity duration-500 ${
-        showContent ? 'opacity-100' : 'opacity-0'
-      }`}
-    >
-      {children}
-    </div>
+    <AuthProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <div 
+            className={`min-h-screen transition-opacity duration-500 ${
+              showContent ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            {children}
+          </div>
+        </WishlistProvider>
+      </CartProvider>
+    </AuthProvider>
   )
 }

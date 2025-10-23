@@ -21,6 +21,18 @@ model User {
   location   String?
   bio        String?
   verified   Boolean  @default(false)
+  
+  // Verification documents
+  profilePicture    String?  @map("profile_picture")
+  studentCardImage  String?  @map("student_card_image")
+  idDocumentImage   String?  @map("id_document_image")
+  
+  // Verification status
+  documentsUploaded Boolean  @default(false) @map("documents_uploaded")
+  adminVerified     Boolean  @default(false) @map("admin_verified")
+  verificationNotes String?  @map("verification_notes")
+  verifiedAt        DateTime? @map("verified_at")
+  
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -32,6 +44,8 @@ model User {
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   addresses     Address[]
+  notifications Notification[]
+  wishlistItems WishlistItem[]
   
   // Security Relations
   security      AccountSecurity?
@@ -206,6 +220,8 @@ model Product {
   cartItems CartItem[]
   orderItems OrderItem[]
   reviews   Review[]
+  wishlistItems WishlistItem[]
+  messages  Message[]
 
   @@map("products")
 }
@@ -314,16 +330,56 @@ model Message {
   id        String   @id @default(cuid())
   content   String
   read      Boolean  @default(false)
+  productId String?  @map("product_id") // Optional product reference for product-related messages
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Foreign keys
+  senderId   String @map("sender_id")
+  receiverId String @map("receiver_id")
+
+  // Relations
+  sender   User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // order_status, product_review, message, system, verification
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Optional metadata for different notification types
+  metadata  Json?    // Can store order ID, product ID, etc.
+
+  // Foreign keys
+  userId    String
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Foreign keys
-  senderId   String
-  receiverId String
+  userId    String
+  productId String
 
   // Relations
-  sender   User @relation("SentMessages", fields: [senderId], references: [id])
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@map("messages")
+  @@unique([userId, productId])
+  @@map("wishlist_items")
 }
