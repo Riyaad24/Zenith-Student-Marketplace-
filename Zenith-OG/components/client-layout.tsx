@@ -11,50 +11,19 @@ interface ClientLayoutProps {
 }
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [showContent, setShowContent] = useState(false)
-  const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [isLoading, setIsLoading] = useState(true) // Always start with splash screen
+  const [showContent, setShowContent] = useState(false) // Hide content initially
 
   useEffect(() => {
-    // Force splash screen to always show - clear any existing session storage
-    sessionStorage.removeItem('zenith-splash-seen')
-    const hasSeenSplash = false // Force splash screen to always show for testing
+    console.log('ClientLayout mounted - showing splash screen on every page load')
     
-    console.log('ClientLayout mounted - showing splash screen')
-    
-    if (hasSeenSplash) {
-      // Skip splash screen if already seen in this session
-      setIsLoading(false)
-      setShowContent(true)
-      setIsInitialLoad(false)
-    } else {
-      // Show splash screen for first-time visitors
-      setIsInitialLoad(true)
-      setIsLoading(true)
-    }
-
-    // Also check if page is already loaded
-    if (document.readyState === 'complete') {
-      if (hasSeenSplash) {
-        setIsLoading(false)
-        setShowContent(true)
-      }
-    } else {
-      // Wait for page to load
-      const handleLoad = () => {
-        if (hasSeenSplash) {
-          setIsLoading(false)
-          setShowContent(true)
-        }
-      }
-      window.addEventListener('load', handleLoad)
-      return () => window.removeEventListener('load', handleLoad)
-    }
+    // Always show splash screen on every page load/refresh
+    setIsLoading(true)
+    setShowContent(false)
   }, [])
 
   const handleSplashComplete = () => {
-    // Mark splash as seen for this session
-    sessionStorage.setItem('zenith-splash-seen', 'true')
+    console.log('Splash screen completed, showing main content')
     setIsLoading(false)
     
     // Small delay to ensure smooth transition
@@ -63,12 +32,12 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     }, 100)
   }
 
-  // Show splash screen on first visit
-  if (isLoading && isInitialLoad) {
+  // Always show splash screen first
+  if (isLoading) {
     return (
       <SplashScreen 
         onComplete={handleSplashComplete}
-        duration={6000} // 6 seconds for optimal experience
+        duration={5000} // 5 seconds for optimal experience
       />
     )
   }

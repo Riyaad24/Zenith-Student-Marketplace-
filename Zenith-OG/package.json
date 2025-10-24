@@ -45,7 +45,9 @@
     "next-themes": "latest",
     "prisma": "^6.16.3",
     "react": "^19",
+    "react-countup": "^6.5.3",
     "react-dom": "^19",
+    "react-intersection-observer": "^9.16.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7"
   },

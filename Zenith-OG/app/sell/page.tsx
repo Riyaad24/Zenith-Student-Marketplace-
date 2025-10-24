@@ -1,32 +1,138 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { ImagePlus, Trash2 } from "lucide-react"
+import { ImagePlus, Trash2, Upload, X, Loader2, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/components/auth-provider"
 import Link from "next/link"
 
+interface UploadedImage {
+  filename: string
+  url: string
+  size: number
+  type: string
+}
+
 export default function SellPage() {
-  const [images, setImages] = useState<string[]>([])
+  const router = useRouter()
+  const { user, loading } = useAuth()
+  const [images, setImages] = useState<UploadedImage[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [contactPreferences, setContactPreferences] = useState({
     zenithMessages: true,
     email: false,
     phone: false,
   })
   const [termsAgreed, setTermsAgreed] = useState(false)
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    price: '',
+    quantity: '1',
+    category: '',
+    condition: '',
+    priceType: '',
+    city: '',
+    campus: ''
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // This would normally handle file uploads
-  const handleImageUpload = () => {
-    // Simulate adding a placeholder image
-    setImages([...images, `/placeholder.svg?height=200&width=200&text=Image+${images.length + 1}`])
+  useEffect(() => {
+    // Check authentication using auth context
+    if (!loading && !user) {
+      // User is not authenticated, redirect to login
+      router.push('/login')
+    }
+  }, [user, loading, router])
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index))
+  // If not authenticated, don't render the page (redirect will happen)
+  if (!user) {
+    return null
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+
+    const files = Array.from(e.target.files)
+    
+    // Check if adding these files would exceed the 5 image limit
+    if (images.length + files.length > 5) {
+      setUploadError('Maximum 5 images allowed per product')
+      return
+    }
+
+    setUploadingImages(true)
+    setUploadError(null)
+
+    try {
+      const formData = new FormData()
+      files.forEach(file => {
+        formData.append('images', file)
+      })
+
+      const response = await fetch('/api/products/images', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to upload images')
+      }
+
+      setImages(prev => [...prev, ...result.images])
+      
+      // Clear the input value so the same file can be selected again if needed
+      if (e.target) {
+        e.target.value = ''
+      }
+
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload images')
+    } finally {
+      setUploadingImages(false)
+    }
+  }
+
+  const removeImage = async (index: number) => {
+    const imageToRemove = images[index]
+    
+    try {
+      // Delete from server
+      await fetch(`/api/products/images?filename=${imageToRemove.filename}`, {
+        method: 'DELETE',
+      })
+      
+      // Remove from local state
+      setImages(images.filter((_, i) => i !== index))
+    } catch (error) {
+      console.error('Error deleting image:', error)
+      // Still remove from UI even if server deletion fails
+      setImages(images.filter((_, i) => i !== index))
+    }
   }
 
   const handleContactPreferenceChange = (preference: keyof typeof contactPreferences) => {
@@ -36,10 +142,81 @@ export default function SellPage() {
     }))
   }
 
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleSubmit = async () => {
+    if (!termsAgreed) {
+      setUploadError('Please agree to the terms and conditions')
+      return
+    }
+
+    if (images.length === 0) {
+      setUploadError('Please add at least one image of your product')
+      return
+    }
+
+    if (!formData.title || !formData.description || !formData.price || !formData.quantity || !formData.category) {
+      setUploadError('Please fill in all required fields')
+      return
+    }
+
+    if (parseInt(formData.quantity) < 1) {
+      setUploadError('Quantity must be at least 1')
+      return
+    }
+
+    setIsSubmitting(true)
+    setUploadError(null)
+
+    try {
+      const productData = {
+        ...formData,
+        images: images.map(img => img.url),
+        contactPreferences,
+        price: parseFloat(formData.price),
+        quantity: parseInt(formData.quantity)
+      }
+
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create product listing')
+      }
+
+      // Redirect to the product page or success page
+      router.push(`/product/${result.id}`)
+      
+    } catch (error) {
+      console.error('Submit error:', error)
+      setUploadError(error instanceof Error ? error.message : 'Failed to create listing')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="container px-4 md:px-6 py-8">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">List an Item for Sale</h1>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2">List an Item for Sale</h1>
+          <p className="text-gray-600">
+            Welcome back, <span className="font-medium text-purple-700">{user.name || user.firstName || 'Student'}</span>! 
+            Create a listing to sell your items to fellow students.
+          </p>
+        </div>
 
         <div className="space-y-8">
           {/* Product Information */}
@@ -51,12 +228,17 @@ export default function SellPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
-                <Input id="title" placeholder="e.g., Calculus Textbook 8th Edition" />
+                <Input 
+                  id="title" 
+                  placeholder="e.g., Calculus Textbook 8th Edition"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select>
+                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
@@ -71,7 +253,7 @@ export default function SellPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="condition">Condition</Label>
-                  <Select>
+                  <Select value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select condition" />
                     </SelectTrigger>
@@ -91,6 +273,8 @@ export default function SellPage() {
                   id="description"
                   placeholder="Describe your item in detail. Include information about the condition, features, and why you're selling it."
                   rows={5}
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
                 />
               </div>
             </CardContent>
@@ -99,21 +283,41 @@ export default function SellPage() {
           {/* Price and Location */}
           <Card>
             <CardHeader>
-              <CardTitle>Price and Location</CardTitle>
-              <CardDescription>Set your price and specify your location</CardDescription>
+              <CardTitle>Price, Quantity & Location</CardTitle>
+              <CardDescription>Set your price, available quantity and specify your location</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="price">Price (ZAR)</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2">R</span>
-                    <Input id="price" type="number" className="pl-7" placeholder="0.00" />
+                    <Input 
+                      id="price" 
+                      type="number" 
+                      className="pl-7" 
+                      placeholder="0.00"
+                      value={formData.price}
+                      onChange={(e) => handleInputChange('price', e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="quantity">Quantity Available</Label>
+                  <Input 
+                    id="quantity" 
+                    type="number" 
+                    min="1"
+                    max="999"
+                    placeholder="1"
+                    value={formData.quantity}
+                    onChange={(e) => handleInputChange('quantity', e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500">How many items do you have for sale?</p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="negotiable">Price Type</Label>
-                  <Select>
+                  <Select value={formData.priceType} onValueChange={(value) => handleInputChange('priceType', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select price type" />
                     </SelectTrigger>
@@ -128,7 +332,7 @@ export default function SellPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Select>
+                  <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select city" />
                     </SelectTrigger>
@@ -144,7 +348,12 @@ export default function SellPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="campus">Campus/Area</Label>
-                  <Input id="campus" placeholder="e.g., UCT Main Campus" />
+                  <Input 
+                    id="campus" 
+                    placeholder="e.g., UCT Main Campus"
+                    value={formData.campus}
+                    onChange={(e) => handleInputChange('campus', e.target.value)}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -157,13 +366,22 @@ export default function SellPage() {
               <CardDescription>Add up to 5 images of your item (first image will be the main image)</CardDescription>
             </CardHeader>
             <CardContent>
+              {uploadError && (
+                <Alert className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{uploadError}</AlertDescription>
+                </Alert>
+              )}
+              
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {images.map((image, index) => (
                   <div key={index} className="relative aspect-square border rounded-md overflow-hidden">
-                    <img
-                      src={image || "/placeholder.svg"}
+                    <Image
+                      src={image.url}
                       alt={`Product image ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, 20vw"
                     />
                     <Button
                       variant="destructive"
@@ -171,7 +389,7 @@ export default function SellPage() {
                       className="absolute top-1 right-1 h-6 w-6"
                       onClick={() => removeImage(index)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <X className="h-4 w-4" />
                     </Button>
                     {index === 0 && (
                       <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1 text-center">
@@ -180,15 +398,35 @@ export default function SellPage() {
                     )}
                   </div>
                 ))}
+                
                 {images.length < 5 && (
-                  <button
-                    onClick={handleImageUpload}
-                    className="aspect-square border border-dashed rounded-md flex flex-col items-center justify-center p-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
-                    <span className="text-sm text-muted-foreground">Add Image</span>
-                  </button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={uploadingImages}
+                    />
+                    <div className="aspect-square border border-dashed rounded-md flex flex-col items-center justify-center p-4 hover:bg-gray-50 transition-colors">
+                      {uploadingImages ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                          <span className="text-sm text-muted-foreground">Add Images</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 )}
+              </div>
+              
+              <div className="mt-4 text-sm text-gray-600">
+                <p>• Maximum 5 images (10MB each)</p>
+                <p>• Supported formats: JPEG, PNG, WebP</p>
+                <p>• First image will be used as the main product image</p>
               </div>
             </CardContent>
           </Card>
@@ -268,8 +506,23 @@ export default function SellPage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline">Save as Draft</Button>
-              <Button className="bg-purple-700 hover:bg-purple-800">List Item</Button>
+              <Button variant="outline" disabled={isSubmitting}>
+                Save as Draft
+              </Button>
+              <Button 
+                className="bg-purple-700 hover:bg-purple-800" 
+                onClick={handleSubmit}
+                disabled={isSubmitting || !termsAgreed || images.length === 0}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Listing...
+                  </>
+                ) : (
+                  'List Item'
+                )}
+              </Button>
             </CardFooter>
           </Card>
         </div>

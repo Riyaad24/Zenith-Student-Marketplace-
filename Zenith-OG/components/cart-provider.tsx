@@ -7,6 +7,7 @@ interface CartItem {
   name: string
   price: number
   quantity: number
+  maxQuantity?: number // Available inventory from the product
   image?: string
   sellerId: string
 }
@@ -48,12 +49,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existingItem = currentItems.find(item => item.id === newItem.id)
       
       if (existingItem) {
-        // If item already exists, increase quantity
-        return currentItems.map(item =>
-          item.id === newItem.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
+        // If item already exists, increase quantity but respect max limit
+        const newQuantity = existingItem.quantity + 1
+        const maxAllowed = newItem.maxQuantity || 999
+        
+        if (newQuantity <= maxAllowed) {
+          return currentItems.map(item =>
+            item.id === newItem.id
+              ? { ...item, quantity: newQuantity }
+              : item
+          )
+        } else {
+          // Don't add if it would exceed max quantity
+          console.warn(`Cannot add more items. Maximum quantity (${maxAllowed}) reached.`)
+          return currentItems
+        }
       } else {
         // If new item, add with quantity 1
         return [...currentItems, { ...newItem, quantity: 1 }]
@@ -72,9 +82,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     setItems(currentItems =>
-      currentItems.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      )
+      currentItems.map(item => {
+        if (item.id === itemId) {
+          const maxAllowed = item.maxQuantity || 999
+          const newQuantity = Math.min(quantity, maxAllowed)
+          return { ...item, quantity: newQuantity }
+        }
+        return item
+      })
     )
   }
 

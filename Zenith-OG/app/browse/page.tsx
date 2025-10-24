@@ -19,6 +19,7 @@ interface Product {
   title: string
   description: string
   price: number
+  quantity: number
   image: string | null
   condition: string
   location: string | null
@@ -93,6 +94,7 @@ export default function BrowsePage() {
       id: product.id,
       name: product.title,
       price: product.price,
+      maxQuantity: product.quantity,
       image: product.image || undefined,
       sellerId: product.seller.id
     })
@@ -238,6 +240,7 @@ export default function BrowsePage() {
           title: "Advanced Chemistry Textbook",
           description: "Comprehensive chemistry textbook for university students. Excellent condition with minimal highlighting.",
           price: 650,
+          quantity: 3,
           image: null,
           condition: "Good",
           location: "Cape Town",
@@ -260,6 +263,7 @@ export default function BrowsePage() {
           title: "Scientific Calculator HP 50g",
           description: "Graphing calculator perfect for engineering and mathematics courses. Includes original manual.",
           price: 1200,
+          quantity: 1,
           image: null,
           condition: "Excellent",
           location: "Johannesburg",
@@ -282,6 +286,7 @@ export default function BrowsePage() {
           title: "Study Notes - Economics 101",
           description: "Comprehensive study notes covering all major topics in introductory economics. Handwritten with diagrams.",
           price: 150,
+          quantity: 5,
           image: null,
           condition: "Good",
           location: "Durban",
@@ -304,6 +309,7 @@ export default function BrowsePage() {
           title: "Mathematics Tutoring Sessions",
           description: "One-on-one mathematics tutoring for undergraduate students. Flexible scheduling available.",
           price: 300,
+          quantity: 10,
           image: null,
           condition: "New",
           location: "Stellenbosch",
@@ -619,17 +625,24 @@ export default function BrowsePage() {
                       </p>
                     </CardContent>
                     <CardFooter className="p-4 flex justify-between items-center">
-                      <div className="font-bold text-lg">R{product.price}</div>
+                      <div>
+                        <div className="font-bold text-lg">R{product.price}</div>
+                        <div className="text-sm text-gray-600">
+                          {product.quantity} available
+                        </div>
+                      </div>
                       <div className="flex gap-2">
                         {user && (
                           <Button 
                             size="sm" 
                             variant="outline"
                             onClick={() => handleAddToCart(product)}
-                            className="flex items-center gap-1"
+                            disabled={product.quantity === 0}
+                            className="flex items-center gap-1 disabled:opacity-50"
+                            title={product.quantity === 0 ? "Out of stock" : "Add to cart"}
                           >
                             <Plus className="h-4 w-4" />
-                            Cart
+                            {product.quantity === 0 ? "Out of Stock" : "Cart"}
                           </Button>
                         )}
                         <Link href={`/product/${product.id}`}>

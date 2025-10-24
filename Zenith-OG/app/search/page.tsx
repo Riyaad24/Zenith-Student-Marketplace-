@@ -17,6 +17,7 @@ interface Product {
   title: string
   description: string
   price: number
+  quantity: number
   image: string | null
   condition: string
   location: string | null
@@ -91,6 +92,7 @@ export default function SearchPage() {
       id: product.id,
       name: product.title,
       price: product.price,
+      maxQuantity: product.quantity,
       image: product.image || undefined,
       sellerId: product.seller.id
     })

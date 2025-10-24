@@ -200,6 +200,7 @@ model Product {
   title       String
   description String
   price       Float
+  quantity    Int      @default(1) // Available quantity/inventory
   image       String?
   images      String?  // JSON array of image URLs
   condition   String   // new, used, refurbished

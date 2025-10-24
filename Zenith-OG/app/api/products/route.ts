@@ -1,5 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
+
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+
+interface JWTPayload {
+  userId: string
+  email: string
+}
+
+async function getAuthenticatedUser(request: NextRequest) {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+
+    if (!token) {
+      return null
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    return decoded
+  } catch (error) {
+    return null
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -144,6 +169,113 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching products:', error)
     return NextResponse.json(
       { error: 'Failed to fetch products' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Check authentication
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Parse request body
+    const body = await request.json()
+    const {
+      title,
+      description,
+      price,
+      quantity,
+      category,
+      condition,
+      priceType,
+      city,
+      campus,
+      images,
+      contactPreferences
+    } = body
+
+    // Validate required fields
+    if (!title || !description || !price || !quantity || !category || !condition) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
+    }
+
+    // Validate quantity
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return NextResponse.json(
+        { error: 'Quantity must be a positive integer' },
+        { status: 400 }
+      )
+    }
+
+    if (!images || images.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one image is required' },
+        { status: 400 }
+      )
+    }
+
+    // Get or create category
+    let productCategory = await prisma.category.findFirst({
+      where: { slug: category }
+    })
+
+    if (!productCategory) {
+      // Create category if it doesn't exist
+      const categoryName = category.charAt(0).toUpperCase() + category.slice(1)
+      productCategory = await prisma.category.create({
+        data: {
+          name: categoryName,
+          slug: category,
+          description: `${categoryName} products`
+        }
+      })
+    }
+
+    // Create the product
+    const product = await prisma.product.create({
+      data: {
+        title,
+        description,
+        price,
+        quantity,
+        condition,
+        location: `${city || ''} ${campus || ''}`.trim(),
+        university: campus || '',
+        images: images,
+        status: 'active',
+        sellerId: user.userId,
+        categoryId: productCategory.id,
+      },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true
+          }
+        },
+        category: true
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      id: product.id,
+      product
+    })
+
+  } catch (error) {
+    console.error('Error creating product:', error)
+    return NextResponse.json(
+      { error: 'Failed to create product' },
       { status: 500 }
     )
   }

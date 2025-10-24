@@ -23,6 +23,7 @@ export default function WishlistPage() {
       id: item.product.id,
       name: item.product.title,
       price: item.product.price,
+      maxQuantity: item.product.quantity,
       image: item.product.image,
       sellerId: item.product.seller.id
     })

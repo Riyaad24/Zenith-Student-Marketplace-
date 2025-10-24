@@ -8,11 +8,20 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ShoppingCart, Plus, Minus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export default function CartPage() {
   const { user, loading } = useAuth()
   const { items: cartItems, updateQuantity, removeItem, getSubtotal } = useCart()
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+
+  // Navigate to checkout
+  const handleCheckout = () => {
+    if (cartItems.length > 0 && user) {
+      router.push('/checkout')
+    }
+  }
 
   // Simulate loading
   useEffect(() => {
@@ -155,6 +164,11 @@ export default function CartPage() {
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-900">{item.name}</h3>
                           <p className="text-gray-600 text-sm">R{item.price.toFixed(2)} each</p>
+                          {item.maxQuantity && (
+                            <p className="text-xs text-gray-500">
+                              {item.maxQuantity - item.quantity} of {item.maxQuantity} available
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button
@@ -170,7 +184,9 @@ export default function CartPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="h-8 w-8 p-0"
+                            disabled={item.maxQuantity ? item.quantity >= item.maxQuantity : false}
+                            className="h-8 w-8 p-0 disabled:opacity-50"
+                            title={item.maxQuantity && item.quantity >= item.maxQuantity ? "Maximum quantity reached" : "Increase quantity"}
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
@@ -216,6 +232,7 @@ export default function CartPage() {
                   <Button 
                     className="w-full mt-6 bg-purple-600 hover:bg-purple-700 text-white py-3 text-lg"
                     disabled={cartItems.length === 0}
+                    onClick={handleCheckout}
                   >
                     Proceed to Checkout
                   </Button>

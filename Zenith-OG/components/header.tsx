@@ -1,23 +1,52 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/components/auth-provider"
 import { useCart } from "@/components/cart-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, Menu, ShoppingCart, User, ChevronDown, BookOpen, MessageSquare, LogOut } from "lucide-react"
+import { Search, Menu, ShoppingCart, User, ChevronDown, BookOpen, MessageSquare, LogOut, Laptop, GraduationCap, HelpCircle, Info, Mail, Grid3X3 } from "lucide-react"
 import ZenithLogo from "@/components/ZenithLogo"
 import NotificationDropdown from "@/components/notification-dropdown"
 import WishlistDropdown from "@/components/wishlist-dropdown"
 
 export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isNavDropdownOpen, setIsNavDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const { user, loading, signOut } = useAuth()
   const { getItemCount } = useCart()
+  const navDropdownRef = useRef<HTMLDivElement>(null)
+  const userDropdownRef = useRef<HTMLDivElement>(null)
 
   const cartItemCount = getItemCount()
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navDropdownRef.current && !navDropdownRef.current.contains(event.target as Node)) {
+        setIsNavDropdownOpen(false)
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsNavDropdownOpen(false)
+        setIsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
 
   const handleSignOut = async () => {
     await signOut()
@@ -38,6 +67,62 @@ export default function Header() {
     if (e.key === 'Enter') {
       handleSearch(e)
     }
+  }
+
+  // Navigation menu data
+  const navigationMenu = {
+    categories: [
+      {
+        title: "Textbooks & Study Materials",
+        href: "/categories/textbooks",
+        icon: BookOpen,
+        description: "Academic textbooks, study guides, and course materials"
+      },
+      {
+        title: "Electronics & Tech",
+        href: "/categories/electronics", 
+        icon: Laptop,
+        description: "Laptops, tablets, calculators, and tech essentials"
+      },
+      {
+        title: "Tutoring Services",
+        href: "/categories/tutoring",
+        icon: GraduationCap,
+        description: "One-on-one tutoring and academic support"
+      },
+      {
+        title: "Study Notes",
+        href: "/categories/notes",
+        icon: MessageSquare,
+        description: "Student notes and study materials"
+      }
+    ],
+    pages: [
+      {
+        title: "Browse All Products", 
+        href: "/browse",
+        icon: Grid3X3,
+        description: "Explore all available items"
+      },
+      {
+        title: "FAQ",
+        href: "/faq",
+        icon: HelpCircle,
+        description: "Frequently asked questions"
+      },
+      {
+        title: "About Us",
+        href: "/about",
+        icon: Info,
+        description: "Learn about Zenith Marketplace"
+      },
+      {
+        title: "Contact",
+        href: "/contact",
+        icon: Mail,
+        description: "Get in touch with our team"
+      }
+    ]
   }
 
   return (
@@ -76,6 +161,94 @@ export default function Header() {
             </span>
           </div>
         </Link>
+
+        {/* Navigation Dropdown - Left of Search */}
+        <div className="relative mr-4" ref={navDropdownRef}>
+          <Button
+            variant="ghost"
+            className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 border border-transparent hover:border-purple-200"
+            onClick={() => setIsNavDropdownOpen(!isNavDropdownOpen)}
+            aria-expanded={isNavDropdownOpen}
+            aria-haspopup="true"
+            aria-label="Browse categories and pages"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="hidden md:inline font-medium">Browse</span>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isNavDropdownOpen ? 'rotate-180' : ''}`} />
+          </Button>
+
+          {/* Navigation Dropdown Menu */}
+          {isNavDropdownOpen && (
+            <>
+              {/* Mobile backdrop */}
+              <div className="fixed inset-0 bg-black bg-opacity-25 z-40 md:hidden" onClick={() => setIsNavDropdownOpen(false)} />
+              
+              <div className="absolute left-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-gray-100 py-4 z-50">
+                {/* Categories Section */}
+                <div className="px-4 pb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Categories</h3>
+                  <div className="grid gap-2">
+                    {navigationMenu.categories.map((category) => {
+                      const IconComponent = category.icon
+                      return (
+                        <Link
+                          key={category.href}
+                          href={category.href}
+                          className="flex items-start p-3 rounded-lg hover:bg-purple-50 hover:border-purple-200 border border-transparent transition-all duration-200 group"
+                          onClick={() => setIsNavDropdownOpen(false)}
+                        >
+                          <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors duration-200">
+                            <IconComponent className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div className="ml-3 flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 group-hover:text-purple-700 truncate">{category.title}</h4>
+                            <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{category.description}</p>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-100 my-2"></div>
+
+                {/* Pages Section */}
+                <div className="px-4 pt-2">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Quick Links</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {navigationMenu.pages.map((page) => {
+                      const IconComponent = page.icon
+                      return (
+                        <Link
+                          key={page.href}
+                          href={page.href}
+                          className="flex items-center p-2 rounded-lg hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 group"
+                          onClick={() => setIsNavDropdownOpen(false)}
+                        >
+                          <IconComponent className="h-4 w-4 text-gray-400 group-hover:text-purple-600 mr-2 flex-shrink-0" />
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-purple-700 truncate">{page.title}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Footer Action */}
+                <div className="border-t border-gray-100 mt-4 pt-4 px-4">
+                  <Link
+                    href="/sell"
+                    className="flex items-center justify-center w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                    onClick={() => setIsNavDropdownOpen(false)}
+                  >
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Start Selling
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Enhanced Search Section - More Prominent */}
         <div className="flex-1 max-w-2xl mx-8">
@@ -146,7 +319,7 @@ export default function Header() {
               </Button>
 
               {/* Desktop User Menu */}
-              <div className="hidden md:flex items-center relative">
+              <div className="hidden md:flex items-center relative" ref={userDropdownRef}>
                 <Button
                   variant="ghost"
                   className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 border border-transparent hover:border-purple-200"

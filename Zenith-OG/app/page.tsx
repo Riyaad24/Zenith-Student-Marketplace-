@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { BookOpen, Laptop, MessageSquare, ShieldCheck, Users } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/components/auth-provider"
+import StatsCounter from "@/components/stats-counter"
 
 export default function Home() {
   const { user, loading } = useAuth()
@@ -28,7 +29,7 @@ export default function Home() {
                   <span className="text-purple-600 block">Student <span className="text-purple-700">Marketplace</span></span>
                 </h1>
                 <p className="max-w-[700px] text-gray-700 text-2xl md:text-3xl mx-auto lg:mx-0 leading-relaxed font-medium">
-                  A safe, affordable, and accessible marketplace for Richfield Graduate Institute students to buy, sell, rent or trade study materials and tutoring services.
+                  A safe, affordable, and accessible marketplace for South African tertiary students to buy, sell, rent or trade study materials and tutoring services.
                 </p>
               </div>
               
@@ -76,7 +77,7 @@ export default function Home() {
                 {/* Remove the white box and integrate directly */}
                 <Image
                   src="/homepage-hero.png"
-                  alt="South African students using Zenith marketplace on laptops and phones"
+                  alt="South African tertiary students using Zenith marketplace on laptops and phones"
                   width={700}
                   height={500}
                   className="w-full h-auto object-cover opacity-90 mix-blend-multiply transform hover:scale-[1.02] transition-all duration-500"
@@ -95,29 +96,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section with Much Better Scaling */}
-      <section className="w-full py-20 md:py-28 bg-white">
-        <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 md:gap-16 text-center">
-            <div className="space-y-4">
-              <div className="text-5xl md:text-7xl font-bold text-purple-600">10K+</div>
-              <div className="text-xl md:text-2xl text-gray-600 font-bold">Active Students</div>
-            </div>
-            <div className="space-y-4">
-              <div className="text-5xl md:text-7xl font-bold text-purple-600">25K+</div>
-              <div className="text-xl md:text-2xl text-gray-600 font-bold">Items Sold</div>
-            </div>
-            <div className="space-y-4">
-              <div className="text-5xl md:text-7xl font-bold text-purple-600">15</div>
-              <div className="text-xl md:text-2xl text-gray-600 font-bold">Universities</div>
-            </div>
-            <div className="space-y-4">
-              <div className="text-5xl md:text-7xl font-bold text-purple-600">R2M+</div>
-              <div className="text-xl md:text-2xl text-gray-600 font-bold">Money Saved</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Stats Section with Animated Counters */}
+      <StatsCounter />
 
       {/* Features Section with Enhanced Scaling */}
       <section id="features" className="w-full py-20 md:py-28 lg:py-36 bg-white" role="region" aria-labelledby="features-heading">
@@ -128,7 +108,7 @@ export default function Home() {
                 Everything You Need in One Place
               </h2>
               <p className="max-w-4xl text-xl md:text-2xl text-gray-700 leading-relaxed">
-                Designed specifically for South African students, our platform makes buying and selling study materials safe, simple, and affordable.
+                Designed specifically for South African tertiary students, our platform makes buying and selling study materials safe, simple, and affordable.
               </p>
             </div>
           </div>
@@ -140,7 +120,7 @@ export default function Home() {
               <div className="space-y-4">
                 <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Textbooks & Study Materials</h3>
                 <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
-                  Find affordable textbooks, study guides, and course materials from students at your university.
+                  Find affordable textbooks, study guides, and course materials from students at tertiary institutions across South Africa.
                 </p>
               </div>
             </div>
@@ -226,7 +206,7 @@ export default function Home() {
               <div className="space-y-4">
                 <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Sign Up</h3>
                 <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
-                  Create your free account using your university email address for instant verification.
+                  Create your free account using your tertiary institution email address for instant verification.
                 </p>
               </div>
             </div>
