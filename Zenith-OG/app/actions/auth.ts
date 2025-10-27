@@ -64,7 +64,11 @@ export async function signIn(formData: FormData) {
       maxAge: 60 * 60 * 24, // 24 hours
     });
 
-    return { success: true, redirectTo: '/' };
+    return { 
+      success: true, 
+      redirectTo: result.user?.redirectTo || '/',
+      token: result.token // Return token so client can store it
+    };
   } catch (error: any) {
     return { error: error.message || 'Login failed' };
   }

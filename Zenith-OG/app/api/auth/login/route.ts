@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { getClientIP } from '@/lib/admin-auth'
+import { logAdminSignin } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const { email: loginEmail, password } = await request.json()
 
-    if (!email || !password) {
+    if (!loginEmail || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -16,9 +18,10 @@ export async function POST(request: NextRequest) {
 
     // Find user by email
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: loginEmail },
       include: {
         security: true,
+        admin: true,
         roleAssignments: {
           include: {
             role: true
@@ -58,12 +61,72 @@ export async function POST(request: NextRequest) {
       data: { lastLogin: new Date() }
     })
 
-    // Generate JWT token
+    // Exact login logic as requested
+    const ADMIN_EMAIL_REGEX = /^(\d{9})ads@my\.richfield\.ac\.za$/i
+    const userEmail = (user.email || '').toLowerCase()
+    const adminMatch = userEmail.match(ADMIN_EMAIL_REGEX)
+    
+    if (adminMatch) {
+      const studentDigits = adminMatch[1]
+      
+      // Check if there's an admins row linked to this user (by student_number OR user_id)
+      const admin = await prisma.admin.findFirst({
+        where: {
+          OR: [
+            { studentNumber: studentDigits },
+            { userId: user.id }
+          ]
+        }
+      })
+      
+      if (admin) {
+        // Log admin signin
+        const ipAddress = getClientIP(request)
+        const userAgent = request.headers.get('user-agent') || undefined
+        
+        await logAdminSignin(user.id, userEmail, ipAddress, userAgent || null)
+        
+        // Return redirect to admin dashboard
+        const roles = user.roleAssignments.map(ra => ra.role.name)
+        const token = jwt.sign(
+          { 
+            userId: user.id, 
+            email: user.email,
+            roles
+          },
+          process.env.NEXTAUTH_SECRET || 'fallback-secret',
+          { expiresIn: '24h' }
+        )
+
+        const userData = {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          university: user.university,
+          verified: user.verified,
+          roles,
+          isAdmin: true
+        }
+
+        return NextResponse.json({
+          success: true,
+          user: userData,
+          token,
+          admin: true,
+          redirect: '/admin/dashboard',
+          message: 'Login successful'
+        })
+      }
+    }
+
+    // Generate JWT token for regular users
+    const roles = user.roleAssignments.map(ra => ra.role.name)
     const token = jwt.sign(
       { 
         userId: user.id, 
         email: user.email,
-        roles: user.roleAssignments.map(ra => ra.role.name)
+        roles
       },
       process.env.NEXTAUTH_SECRET || 'fallback-secret',
       { expiresIn: '24h' }
@@ -77,7 +140,8 @@ export async function POST(request: NextRequest) {
       lastName: user.lastName,
       university: user.university,
       verified: user.verified,
-      roles: user.roleAssignments.map(ra => ra.role.name)
+      roles,
+      isAdmin: false
     }
 
     return NextResponse.json({

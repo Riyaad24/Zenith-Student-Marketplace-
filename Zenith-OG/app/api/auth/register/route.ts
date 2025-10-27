@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { randomBytes } from 'crypto'
+import { isAdminEmail, extractStudentNumber, checkAdminQuota, ADMIN_PERMISSIONS } from '@/lib/admin-auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +32,16 @@ export async function POST(request: NextRequest) {
     const salt = await bcrypt.genSalt(12)
     const passwordHash = await bcrypt.hash(password, salt)
 
+    // Exact admin signup logic as requested
+    const ADMIN_EMAIL_REGEX = /^(\d{9})ads@my\.richfield\.ac\.za$/i
+    const ADMIN_MAX = parseInt(process.env.ADMIN_MAX_ADMINS || '14', 10)
+
+    const emailLower = (email || '').toLowerCase()
+    const adminMatch = emailLower.match(ADMIN_EMAIL_REGEX)
+    const isAdminAttempt = !!adminMatch
+    let adminCreated = false
+    let adminQuotaReached = false
+
     // Create user and security record in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create user profile
@@ -55,38 +66,104 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Find or create default student role
-      let studentRole = await tx.userRole.findUnique({
-        where: { name: 'student' }
-      })
+      // Handle admin user creation if email matches pattern
+      if (adminMatch) {
+        const studentDigits = adminMatch[1]
 
-      if (!studentRole) {
-        studentRole = await tx.userRole.create({
-          data: {
-            name: 'student',
-            description: 'Default student role',
-            permissions: JSON.stringify(['read', 'create_listing', 'purchase', 'message'])
-          }
+        // Count existing linked admins
+        const currentAdmins = await tx.admin.count({
+          where: { isActive: true }
         })
+
+        if (currentAdmins < ADMIN_MAX) {
+          // Create admin record
+          await tx.admin.create({
+            data: {
+              userId: user.id,
+              studentNumber: studentDigits,
+              email: emailLower,
+              permissions: [
+                ADMIN_PERMISSIONS.USERS_READ,
+                ADMIN_PERMISSIONS.USERS_CREATE,
+                ADMIN_PERMISSIONS.USERS_UPDATE,
+                ADMIN_PERMISSIONS.USERS_DELETE,
+                ADMIN_PERMISSIONS.PRODUCTS_READ,
+                ADMIN_PERMISSIONS.PRODUCTS_UPDATE,
+                ADMIN_PERMISSIONS.PRODUCTS_DELETE,
+                ADMIN_PERMISSIONS.ORDERS_READ,
+                ADMIN_PERMISSIONS.ORDERS_UPDATE,
+                ADMIN_PERMISSIONS.LOGS_READ
+              ],
+              isActive: true
+            }
+          })
+
+          // Find or create admin role
+          let adminRole = await tx.userRole.findUnique({
+            where: { name: 'admin' }
+          })
+
+          if (!adminRole) {
+            adminRole = await tx.userRole.create({
+              data: {
+                name: 'admin',
+                description: 'Administrator role with full access',
+                permissions: JSON.stringify(['admin', 'read', 'create', 'update', 'delete'])
+              }
+            })
+          }
+
+          // Assign admin role
+          await tx.userRoleAssignment.create({
+            data: {
+              userId: user.id,
+              roleId: adminRole.id,
+            },
+          })
+
+          adminCreated = true
+        } else {
+          adminQuotaReached = true
+          // Create user normally but do not create admins row
+        }
       }
 
-      // Assign student role
-      await tx.userRoleAssignment.create({
-        data: {
-          userId: user.id,
-          roleId: studentRole.id,
-        },
-      })
+      // If not admin or quota reached, assign student role
+      if (!adminCreated) {
+        // Find or create default student role
+        let studentRole = await tx.userRole.findUnique({
+          where: { name: 'student' }
+        })
+
+        if (!studentRole) {
+          studentRole = await tx.userRole.create({
+            data: {
+              name: 'student',
+              description: 'Default student role',
+              permissions: JSON.stringify(['read', 'create_listing', 'purchase', 'message'])
+            }
+          })
+        }
+
+        // Assign student role
+        await tx.userRoleAssignment.create({
+          data: {
+            userId: user.id,
+            roleId: studentRole.id,
+          },
+        })
+      }
 
       return user
     })
 
     // Generate JWT token
+    const userRoles = adminCreated ? ['admin'] : ['student']
     const token = jwt.sign(
       { 
         userId: result.id, 
         email: result.email,
-        roles: ['student']
+        roles: userRoles
       },
       process.env.NEXTAUTH_SECRET || 'fallback-secret',
       { expiresIn: '24h' }
@@ -100,14 +177,22 @@ export async function POST(request: NextRequest) {
       lastName: result.lastName,
       university: result.university,
       verified: result.verified,
-      roles: ['student']
+      roles: userRoles,
+      isAdmin: adminCreated
+    }
+
+    // Prepare response message
+    let message = 'Account created successfully!'
+    if (isAdminAttempt && adminQuotaReached) {
+      message += ' Note: Admin quota reached, created as regular user.'
     }
 
     return NextResponse.json({
       success: true,
       user: userData,
       token,
-      message: 'Account created successfully!'
+      message,
+      adminQuotaReached: isAdminAttempt && adminQuotaReached
     })
 
   } catch (error) {

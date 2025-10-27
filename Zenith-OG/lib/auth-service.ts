@@ -96,7 +96,7 @@ class AuthService {
       });
 
       // Generate JWT token
-      const token = this.generateToken(result.id);
+      const token = this.generateToken(result.id, email);
 
       // Get user with roles
       const userWithRoles = await this.getUserWithRoles(result.id);
@@ -109,7 +109,7 @@ class AuthService {
   }
 
   // Login user
-  static async login(data: LoginData, ipAddress?: string, userAgent?: string): Promise<{ user: AuthUser; token: string }> {
+  static async login(data: LoginData, ipAddress?: string, userAgent?: string): Promise<{ user: AuthUser & { redirectTo?: string }; token: string }> {
     const { email, password } = data;
 
     try {
@@ -177,12 +177,43 @@ class AuthService {
       await this.logLoginAttempt(email, ipAddress || 'unknown', userAgent, true);
 
       // Generate JWT token
-      const token = this.generateToken(user.id);
+      const token = this.generateToken(user.id, user.email);
 
       // Get user with roles
       const userWithRoles = await this.getUserWithRoles(user.id);
 
-      return { user: userWithRoles, token };
+      // Check if user is admin by role OR by email pattern (admin logic from API route)
+      let isAdmin = userWithRoles.roles.includes('admin');
+      
+      // Also check admin email pattern
+      if (!isAdmin) {
+        const ADMIN_EMAIL_REGEX = /^(\d{9})ads@my\.richfield\.ac\.za$/i;
+        const userEmail = (user.email || '').toLowerCase();
+        const adminMatch = userEmail.match(ADMIN_EMAIL_REGEX);
+        
+        if (adminMatch) {
+          const studentDigits = adminMatch[1];
+          
+          // Check if there's an admin record for this user
+          const adminRecord = await prisma.admin.findFirst({
+            where: {
+              OR: [
+                { studentNumber: studentDigits },
+                { userId: user.id }
+              ]
+            }
+          });
+          
+          isAdmin = !!adminRecord;
+        }
+      }
+      
+      const userWithRedirect = {
+        ...userWithRoles,
+        redirectTo: isAdmin ? '/admin/dashboard' : undefined
+      };
+
+      return { user: userWithRedirect, token };
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -240,8 +271,12 @@ class AuthService {
   }
 
   // Generate JWT token
-  private static generateToken(userId: string): string {
-    return jwt.sign({ userId }, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRY } as jwt.SignOptions);
+  private static generateToken(userId: string, email?: string): string {
+    const payload: any = { userId }
+    if (email) {
+      payload.email = email
+    }
+    return jwt.sign(payload, this.JWT_SECRET, { expiresIn: this.JWT_EXPIRY } as jwt.SignOptions);
   }
 
   // Verify JWT token

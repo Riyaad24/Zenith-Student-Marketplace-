@@ -27,9 +27,15 @@ export default function LoginPage() {
         setMessage({ type: "error", text: result.error })
       } else if (result?.success) {
         setMessage({ type: "success", text: "Login successful! Redirecting..." })
+        
+        // Store token in localStorage if provided (for admin users)
+        if (result.token) {
+          localStorage.setItem('auth-token', result.token)
+        }
+        
         // Refresh auth state
         refreshUser()
-        // Redirect to home page after successful login
+        // Redirect to appropriate page
         setTimeout(() => {
           router.push(result.redirectTo || '/')
         }, 1000)
