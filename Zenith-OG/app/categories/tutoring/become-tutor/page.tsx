@@ -25,7 +25,7 @@ export default function BecomeTutorPage() {
     qualification: "",
     hourlyRate: "",
     bio: "",
-    studentCardUploaded: false,
+    proofOfRegistrationUploaded: false,
     transcriptUploaded: false,
   })
 
@@ -247,18 +247,18 @@ export default function BecomeTutorPage() {
             {currentStep === 3 && (
               <form className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Student Card / Proof of Enrollment</Label>
+                  <Label>Proof of registration</Label>
                   <div className="border-2 border-dashed rounded-lg p-6 text-center">
                     <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-muted-foreground mb-2">
-                      Upload a clear photo of your student card or proof of enrollment
+                      Upload an official proof of registration/enrolment letter showing your name, institution, and current year/semester
                     </p>
                     <Button
                       variant="outline"
                       type="button"
-                      onClick={() => handleInputChange("studentCardUploaded", true)}
+                      onClick={() => handleInputChange("proofOfRegistrationUploaded", true)}
                     >
-                      {formData.studentCardUploaded ? "Uploaded ✓" : "Upload Document"}
+                      {formData.proofOfRegistrationUploaded ? "Uploaded ✓" : "Upload Document"}
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">Required for verification</p>

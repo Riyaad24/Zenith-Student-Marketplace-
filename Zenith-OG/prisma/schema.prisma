@@ -24,7 +24,7 @@ model User {
   
   // Verification documents
   profilePicture    String?  @map("profile_picture")
-  studentCardImage  String?  @map("student_card_image")
+  studentCardImage  String?  @map("student_card_image") // Proof of registration/enrolment letter
   idDocumentImage   String?  @map("id_document_image")
   
   // Verification status
