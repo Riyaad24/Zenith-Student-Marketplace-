@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useToast } from "@/components/ui/toast"
 import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +16,20 @@ export default function LoginPage() {
   const { refreshUser } = useAuth()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  const searchParams = useSearchParams()
+  const toast = useToast()
+
+  useEffect(() => {
+    // If user arrived after signup, show success message
+    if (searchParams?.get('created') === '1') {
+      const msg = 'Account created — please sign in'
+      setMessage({ type: 'success', text: msg })
+      try {
+        toast.showToast('success', msg)
+      } catch (e) {}
+    }
+  }, [searchParams])
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)

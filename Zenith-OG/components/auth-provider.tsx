@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
 
-interface User {
+export interface User {
   id: string
   email: string
   name: string
@@ -11,9 +11,10 @@ interface User {
   avatar?: string | null
   university?: string
   verified?: boolean
+  isAdmin?: boolean
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: string | null }>
@@ -43,7 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (response.ok) {
         const userData = await response.json()
-        setUser(userData.user)
+        const fetchedUser: User = userData.user
+        // Determine admin status from email pattern: local part must be 9 digits followed by 'ads' strictly
+        const localPart = fetchedUser?.email?.split('@')[0] || ''
+        const isAdminMatch = /^[0-9]{9}ads$/i.test(localPart)
+        fetchedUser.isAdmin = isAdminMatch
+        setUser(fetchedUser)
       } else {
         setUser(null)
       }
@@ -58,11 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       // Mock sign in - replace with actual API call
-      const mockUser = {
+      const localPart = email.split('@')[0] || ''
+      const isAdminMatch = /^[0-9]{9}ads$/i.test(localPart)
+      const mockUser: User = {
         id: "1",
         email: email,
         name: "John Doe",
         avatar: null,
+        isAdmin: isAdminMatch,
       }
 
       localStorage.setItem("auth_token", "mock_token_123")
@@ -76,11 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       // Mock sign up - replace with actual API call
-      const mockUser = {
+      const localPart = email.split('@')[0] || ''
+      const isAdminMatch = /^[0-9]{9}ads$/i.test(localPart)
+      const mockUser: User = {
         id: "1",
         email: email,
         name: name,
         avatar: null,
+        isAdmin: isAdminMatch,
       }
 
       localStorage.setItem("auth_token", "mock_token_123")

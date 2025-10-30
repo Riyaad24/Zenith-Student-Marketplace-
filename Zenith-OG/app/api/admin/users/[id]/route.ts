@@ -8,7 +8,7 @@ import { auditLog } from '@/lib/audit'
 async function handleUserGet(
   request: NextRequest,
   authResult: any,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = authResult.admin
@@ -16,8 +16,11 @@ async function handleUserGet(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    // Await params as per Next.js 15+ requirements
+    const { id } = await params
+
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         roleAssignments: {
           include: { role: true }
@@ -38,6 +41,7 @@ async function handleUserGet(
             title: true,
             price: true,
             status: true,
+            images: true,
             createdAt: true
           },
           orderBy: { createdAt: 'desc' },
@@ -69,7 +73,7 @@ async function handleUserGet(
     }
 
     // Log view action for audit
-    await auditLog(authResult.adminId, params.id, 'VIEW_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId, id, 'VIEW_USER', null, getClientIP(request))
 
     return NextResponse.json({
       user: {
@@ -82,6 +86,13 @@ async function handleUserGet(
         location: user.location,
         bio: user.bio,
         verified: user.verified,
+        profilePicture: user.profilePicture,
+        studentCardImage: user.studentCardImage,
+        idDocumentImage: user.idDocumentImage,
+        documentsUploaded: user.documentsUploaded,
+        adminVerified: user.adminVerified,
+        verificationNotes: user.verificationNotes,
+        verifiedAt: user.verifiedAt,
         isAdmin: !!user.admin,
         roles: user.roleAssignments.map(ra => ra.role.name),
         security: user.security,
@@ -102,7 +113,7 @@ async function handleUserGet(
 async function handleUserPut(
   request: NextRequest,
   authResult: any,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = authResult.admin
@@ -110,11 +121,14 @@ async function handleUserPut(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    // Await params as per Next.js 15+ requirements
+    const { id } = await params
+
     const updateData = await request.json()
     
     // Get current user data for audit log
     const currentUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         security: true,
         roleAssignments: {
@@ -130,7 +144,7 @@ async function handleUserPut(
     const updatedUser = await prisma.$transaction(async (tx) => {
       // Update user profile
       const user = await tx.user.update({
-        where: { id: params.id },
+        where: { id },
         data: {
           firstName: updateData.firstName,
           lastName: updateData.lastName,
@@ -150,7 +164,7 @@ async function handleUserPut(
       // Update security settings if provided
       if (updateData.accountLocked !== undefined) {
         await tx.accountSecurity.update({
-          where: { userId: params.id },
+          where: { userId: id },
           data: {
             accountLocked: updateData.accountLocked,
             lockedUntil: updateData.accountLocked ? null : undefined,
@@ -163,7 +177,7 @@ async function handleUserPut(
     })
 
     // Log admin action
-    await auditLog(authResult.adminId, params.id, 'UPDATE_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId, id, 'UPDATE_USER', null, getClientIP(request))
 
     return NextResponse.json({
       success: true,
@@ -188,7 +202,7 @@ async function handleUserPut(
 async function handleUserDelete(
   request: NextRequest,
   authResult: any,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = authResult.admin
@@ -196,9 +210,12 @@ async function handleUserDelete(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
+    // Await params as per Next.js 15+ requirements
+    const { id } = await params
+
     // Get user data for audit log before deletion
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         email: true,
@@ -214,7 +231,7 @@ async function handleUserDelete(
 
     // Prevent deleting other admin users
     const targetUser = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: { admin: true }
     })
 
@@ -222,13 +239,18 @@ async function handleUserDelete(
       return NextResponse.json({ error: 'Cannot delete other admin users' }, { status: 403 })
     }
 
-    // Delete user (cascading deletes will handle related records)
+    // Delete related products first to avoid foreign key constraint violations
+    await prisma.product.deleteMany({
+      where: { sellerId: id }
+    })
+
+    // Delete user (cascading deletes will handle remaining related records)
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     // Log admin action
-    await auditLog(authResult.adminId, params.id, 'DELETE_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId, id, 'DELETE_USER', null, getClientIP(request))
 
     return NextResponse.json({
       success: true,

@@ -206,6 +206,7 @@ model Product {
   images      String?  // JSON array of image URLs
   condition   String   // new, used, refurbished
   status      String   @default("active") // active, sold, inactive
+  listingType String   @default("sell") // sell, trade, rent
   available   Boolean  @default(true)
   location    String?  // City or area for local pickup
   university  String?  // Associated university/college

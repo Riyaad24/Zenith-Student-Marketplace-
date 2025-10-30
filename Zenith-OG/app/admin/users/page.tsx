@@ -43,6 +43,14 @@ export default function AdminUsers() {
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false)
+  // Create user form fields
+  const [newEmail, setNewEmail] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newFirstName, setNewFirstName] = useState('')
+  const [newLastName, setNewLastName] = useState('')
+  const [newUniversity, setNewUniversity] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newRole, setNewRole] = useState('student')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
@@ -72,7 +80,13 @@ export default function AdminUsers() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch users')
+        const err = await response.json().catch(() => null)
+        console.error('Fetch users server error:', err)
+        if (response.status === 403) {
+          setError('Unauthorized — please sign in as an admin')
+          return
+        }
+        throw new Error(err?.error || 'Failed to fetch users')
       }
 
       const data = await response.json()
@@ -80,7 +94,7 @@ export default function AdminUsers() {
       setPagination(data.pagination)
     } catch (error) {
       console.error('Fetch users error:', error)
-      setError('Failed to load users')
+  setError(String((error as any)?.message || 'Failed to load users'))
     } finally {
       setLoading(false)
     }
@@ -95,15 +109,84 @@ export default function AdminUsers() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete user')
+        const err = await response.json().catch(() => null)
+        console.error('Delete user server error:', err)
+        alert(err?.error || 'Failed to delete user')
+        return
       }
 
+      const data = await response.json().catch(() => null)
       setUsers(users.filter(u => u.id !== userId))
       setShowDeleteModal(false)
       setSelectedUser(null)
+      if (data?.message) {
+        alert(data.message)
+      }
     } catch (error) {
       console.error('Delete user error:', error)
-      alert('Failed to delete user')
+  alert(String((error as any)?.message || 'Failed to delete user'))
+    }
+  }
+
+  // Create user handler (from Create User modal)
+  const handleCreateUser = async (formData: {
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    university?: string
+    phone?: string
+    role?: string
+  }) => {
+    try {
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        console.error('Create user server error:', err)
+        alert(err?.error || 'Failed to create user')
+        return
+      }
+
+      const data = await response.json()
+      // Prepend new user to list and refresh
+      setUsers(prev => [
+        ...(prev || []),
+        {
+          id: data.user.id,
+          email: data.user.email,
+          firstName: data.user.firstName,
+          lastName: data.user.lastName,
+          university: data.user.university,
+          verified: data.user.verified,
+          isAdmin: false,
+          roles: [],
+          lastLogin: null,
+          emailVerified: false,
+          accountLocked: false,
+          productsCount: 0,
+          ordersCount: 0,
+          createdAt: new Date().toISOString()
+        }
+      ])
+      setShowCreateModal(false)
+      alert(data.message || 'User created')
+    } catch (error) {
+      console.error('Create user error:', error)
+  alert(String((error as any)?.message || 'Failed to create user'))
     }
   }
 
@@ -267,7 +350,7 @@ export default function AdminUsers() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
+                      <tr key={user.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/admin/users/${user.id}`)}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">
@@ -325,7 +408,7 @@ export default function AdminUsers() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => handleToggleUserStatus(user)}
                             className={`text-sm px-3 py-1 rounded ${
@@ -426,6 +509,49 @@ export default function AdminUsers() {
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Create User</h3>
+            <div className="space-y-3">
+              <input className="w-full px-3 py-2 border rounded" placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+              <input className="w-full px-3 py-2 border rounded" placeholder="Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+              <div className="grid grid-cols-2 gap-2">
+                <input className="w-full px-3 py-2 border rounded" placeholder="First name" value={newFirstName} onChange={e => setNewFirstName(e.target.value)} />
+                <input className="w-full px-3 py-2 border rounded" placeholder="Last name" value={newLastName} onChange={e => setNewLastName(e.target.value)} />
+              </div>
+              <input className="w-full px-3 py-2 border rounded" placeholder="University" value={newUniversity} onChange={e => setNewUniversity(e.target.value)} />
+              <input className="w-full px-3 py-2 border rounded" placeholder="Phone" value={newPhone} onChange={e => setNewPhone(e.target.value)} />
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Role</label>
+                <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-full px-3 py-2 border rounded">
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-4 mt-4">
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-gray-600 border rounded">Cancel</button>
+              <button
+                onClick={() => handleCreateUser({
+                  email: newEmail,
+                  password: newPassword,
+                  firstName: newFirstName,
+                  lastName: newLastName,
+                  university: newUniversity,
+                  phone: newPhone,
+                  role: newRole
+                })}
+                className="px-4 py-2 bg-blue-600 text-white rounded"
+              >
+                Create
               </button>
             </div>
           </div>

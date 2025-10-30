@@ -1,6 +1,11 @@
+'use client'
+
 import { Card, CardContent } from "@/components/ui/card"
+import { useAuth } from '@/components/auth-provider'
 
 export default function AboutPage() {
+  const { user, loading } = useAuth()
+
   return (
     <div className="container px-4 md:px-6 py-8 md:py-12">
       <div className="max-w-3xl mx-auto">
@@ -64,11 +69,18 @@ export default function AboutPage() {
             <p className="text-center mb-6">
               Be part of the movement to transform student resource sharing across South Africa.
             </p>
-            <div className="flex justify-center">
-              <a href="/register" className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-md">
-                Sign Up Today
-              </a>
-            </div>
+            {!loading && !user && (
+              <div className="flex justify-center">
+                <a href="/register" className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-md">
+                  Sign Up Today
+                </a>
+              </div>
+            )}
+            {!loading && user && (
+              <p className="text-center text-muted-foreground">
+                Welcome back! You're already part of our community. 🎉
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

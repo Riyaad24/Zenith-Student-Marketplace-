@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { signUp } from "@/app/actions/auth"
@@ -8,6 +9,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
 import { validateStudentEmail, validateSAPhoneNumber, getInstitutionName } from "@/lib/validation"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/toast"
 
 const universities = [
   "University of Cape Town",
@@ -45,7 +48,10 @@ const universities = [
 ]
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const { refreshUser } = useAuth()
+  const toast = useToast()
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -125,10 +131,34 @@ export default function RegisterPage() {
 
     const result = await signUp(submitData)
 
+
     if (result.error) {
       setMessage({ type: "error", text: result.error })
-    } else if (result.success) {
-      setMessage({ type: "success", text: result.message || "Account created successfully!" })
+      setLoading(false)
+      return
+    }
+
+    if (result.success) {
+      // Show toast success
+      try {
+        toast.showToast('success', result.message || 'Account created — signing you in...')
+      } catch (e) {
+        // no-op if toast unavailable
+      }
+
+      // Refresh client auth state (server action already sets cookie)
+      try {
+        refreshUser()
+      } catch (e) {
+        // ignore
+      }
+
+      // Small delay to allow auth refresh + UX
+      setTimeout(() => {
+        router.push('/')
+      }, 800)
+
+      return
     }
 
     setLoading(false)

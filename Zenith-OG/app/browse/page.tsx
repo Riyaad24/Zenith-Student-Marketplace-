@@ -24,6 +24,7 @@ interface Product {
   condition: string
   location: string | null
   university: string | null
+  listingType?: string // sell, trade, rent
   averageRating: number
   reviewCount: number
   category: {
@@ -77,6 +78,7 @@ export default function BrowsePage() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000])
   const [sortBy, setSortBy] = useState("createdAt")
   const [sortOrder, setSortOrder] = useState("desc")
+  const [listingType, setListingType] = useState<string>("all") // all, sell, trade, rent
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -124,6 +126,7 @@ export default function BrowsePage() {
     priceRange,
     sortBy,
     sortOrder,
+    listingType,
     pagination.page
   ])
 
@@ -132,6 +135,7 @@ export default function BrowsePage() {
     const category = searchParams.get('category')
     const page = searchParams.get('page')
     const search = searchParams.get('search')
+    const listingTypeParam = searchParams.get('listingType')
     
     if (category && !selectedCategories.includes(category)) {
       setSelectedCategories([category])
@@ -141,6 +145,9 @@ export default function BrowsePage() {
     }
     if (search) {
       setSearchTerm(search)
+    }
+    if (listingTypeParam && ['sell', 'trade', 'rent'].includes(listingTypeParam)) {
+      setListingType(listingTypeParam)
     }
   }, [searchParams])
 
@@ -205,6 +212,10 @@ export default function BrowsePage() {
 
       if (priceRange[1] < 10000) {
         params.append('maxPrice', priceRange[1].toString())
+      }
+
+      if (listingType && listingType !== "all") {
+        params.append('listingType', listingType)
       }
 
       const response = await fetch(`/api/products?${params.toString()}`)
@@ -395,6 +406,7 @@ export default function BrowsePage() {
     setSelectedCategories([])
     setSelectedConditions([])
     setSelectedLocation("all")
+    setListingType("all")
     setPriceRange([filterOptions?.priceRange.min || 0, filterOptions?.priceRange.max || 10000])
     setSearchTerm("")
     setPagination(prev => ({ ...prev, page: 1 }))
@@ -433,6 +445,22 @@ export default function BrowsePage() {
                   className="pl-10"
                 />
               </div>
+            </div>
+
+            {/* Listing Type */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Listing Type</h3>
+              <Select value={listingType} onValueChange={setListingType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="sell">For Sale</SelectItem>
+                  <SelectItem value="trade">For Trade</SelectItem>
+                  <SelectItem value="rent">For Rent</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Categories */}
@@ -573,6 +601,16 @@ export default function BrowsePage() {
                         fill
                         className="object-cover"
                       />
+                      {/* Listing Type Badge */}
+                      {product.listingType && product.listingType !== 'sell' && (
+                        <div className={`absolute top-2 left-2 px-3 py-1 rounded-full text-xs font-semibold text-white shadow-md ${
+                          product.listingType === 'trade' 
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500'
+                            : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                        }`}>
+                          {product.listingType === 'trade' ? '🔄 Trade' : '📅 Rent'}
+                        </div>
+                      )}
                     </div>
                     <CardHeader className="p-4">
                       <div className="flex justify-between items-start">
