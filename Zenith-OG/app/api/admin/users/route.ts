@@ -46,7 +46,7 @@ async function handleUsersGet(request: NextRequest, authResult: AdminAuthResult)
 
     // Log search query for audit
     const searchQuery = search ? `search:${search}` : null
-    await auditLog(authResult.adminId, null, 'SEARCH_USERS', searchQuery, getClientIP(request))
+    await auditLog(authResult.adminId || null, null, 'SEARCH_USERS', searchQuery, getClientIP(request))
 
     // Get users with pagination
     const [users, total] = await Promise.all([
@@ -178,7 +178,7 @@ async function handleUsersPost(request: NextRequest, authResult: AdminAuthResult
     })
 
     // Log admin action
-    await auditLog(authResult.adminId, newUser.id, 'CREATE_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId || null, newUser.id, 'CREATE_USER', null, getClientIP(request))
 
     return NextResponse.json({
       success: true,

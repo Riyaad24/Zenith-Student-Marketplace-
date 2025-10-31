@@ -8,12 +8,18 @@ export async function GET() {
     const cookieStore = await cookies()
     const token = cookieStore.get('auth-token')?.value
 
+    console.log('🔍 API /auth/me - Cookie present:', !!token)
+    console.log('🔍 API /auth/me - Token length:', token?.length || 0)
+    console.log('🔍 API /auth/me - All cookies:', cookieStore.getAll().map(c => c.name))
+
     if (!token) {
+      console.log('❌ API /auth/me - No token found in cookies')
       return NextResponse.json({ error: 'No auth token' }, { status: 401 })
     }
 
     // Verify JWT token
     const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as any
+    console.log('✅ API /auth/me - Token decoded for user:', decoded.userId)
     
     // Get user from database
     const user = await prisma.user.findUnique({
@@ -30,8 +36,11 @@ export async function GET() {
     })
 
     if (!user) {
+      console.log('❌ API /auth/me - User not found in database')
       return NextResponse.json({ error: 'User not found' }, { status: 401 })
     }
+
+    console.log('✅ API /auth/me - Returning user:', user.email)
 
     return NextResponse.json({
       user: {
@@ -47,7 +56,7 @@ export async function GET() {
     })
 
   } catch (error) {
-    console.error('Auth verification error:', error)
+    console.error('❌ API /auth/me - Error:', error)
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
   }
 }

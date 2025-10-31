@@ -46,10 +46,7 @@ async function handleProductDelete(
       authResult.adminId,
       id,
       'DELETE_PRODUCT',
-      {
-        productTitle: product.title,
-        sellerId: product.sellerId
-      },
+      JSON.stringify({ productTitle: product.title, sellerId: product.sellerId }),
       getClientIP(request)
     )
 

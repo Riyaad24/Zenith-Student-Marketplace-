@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { getClientIP } from '@/lib/admin-auth'
 import { logAdminSignin } from '@/lib/audit'
+import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -109,6 +110,17 @@ export async function POST(request: NextRequest) {
           isAdmin: true
         }
 
+        // Set HTTP-only cookie
+        const cookieStore = await cookies()
+        cookieStore.set('auth-token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24, // 24 hours
+        })
+
+        console.log('Login API: Admin cookie set')
+
         return NextResponse.json({
           success: true,
           user: userData,
@@ -143,6 +155,17 @@ export async function POST(request: NextRequest) {
       roles,
       isAdmin: false
     }
+
+    // Set HTTP-only cookie
+    const cookieStore = await cookies()
+    cookieStore.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 hours
+    })
+
+    console.log('Login API: User cookie set')
 
     return NextResponse.json({
       success: true,

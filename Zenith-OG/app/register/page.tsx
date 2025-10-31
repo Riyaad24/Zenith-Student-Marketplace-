@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { signUp } from "@/app/actions/auth"
 import Link from "next/link"
 import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
@@ -120,25 +119,37 @@ export default function RegisterPage() {
       return
     }
 
-    // Create FormData for server action
-    const submitData = new FormData()
-    submitData.append('firstName', formData.firstName)
-    submitData.append('lastName', formData.lastName)
-    submitData.append('email', formData.email)
-    submitData.append('phone', phoneValidation.formatted || formData.phone)
-    submitData.append('password', formData.password)
-    submitData.append('university', formData.university)
+    // Call API directly instead of server action
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: phoneValidation.formatted || formData.phone,
+          password: formData.password,
+          university: formData.university,
+        }),
+        credentials: 'include',
+      })
 
-    const result = await signUp(submitData)
+      const result = await response.json()
 
+      if (!response.ok || result.error) {
+        setMessage({ type: "error", text: result.error || 'Registration failed' })
+        setLoading(false)
+        return
+      }
 
-    if (result.error) {
-      setMessage({ type: "error", text: result.error })
-      setLoading(false)
-      return
-    }
+      // Store token if provided
+      if (result.token) {
+        localStorage.setItem('auth-token', result.token)
+      }
 
-    if (result.success) {
       // Show toast success
       try {
         toast.showToast('success', result.message || 'Account created — signing you in...')
@@ -146,22 +157,20 @@ export default function RegisterPage() {
         // no-op if toast unavailable
       }
 
-      // Refresh client auth state (server action already sets cookie)
-      try {
-        refreshUser()
-      } catch (e) {
-        // ignore
-      }
+      // Refresh client auth state
+      await refreshUser()
+      console.log('User auth refreshed after registration')
 
-      // Small delay to allow auth refresh + UX
+      // Redirect with full page reload
       setTimeout(() => {
-        router.push('/')
-      }, 800)
+        window.location.href = '/'
+      }, 1000)
 
-      return
+    } catch (error: any) {
+      console.error('Registration error:', error)
+      setMessage({ type: "error", text: error.message || 'Registration failed' })
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (

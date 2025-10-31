@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { randomBytes } from 'crypto'
 import { isAdminEmail, extractStudentNumber, checkAdminQuota, ADMIN_PERMISSIONS } from '@/lib/admin-auth'
+import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -186,6 +187,17 @@ export async function POST(request: NextRequest) {
     if (isAdminAttempt && adminQuotaReached) {
       message += ' Note: Admin quota reached, created as regular user.'
     }
+
+    // Set HTTP-only cookie
+    const cookieStore = await cookies()
+    cookieStore.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 hours
+    })
+
+    console.log('Register API: Cookie set for user:', result.email)
 
     return NextResponse.json({
       success: true,
