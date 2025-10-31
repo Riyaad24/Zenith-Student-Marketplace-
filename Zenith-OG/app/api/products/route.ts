@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
+import { jwtSecret } from '@/lib/config'
 import { prisma } from '@/lib/prisma'
-
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
 
 interface JWTPayload {
   userId: string
@@ -19,7 +18,7 @@ async function getAuthenticatedUser(request: NextRequest) {
       return null
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    const decoded = jwt.verify(token, jwtSecret) as JWTPayload
     return decoded
   } catch (error) {
     return null
@@ -40,6 +39,7 @@ export async function GET(request: NextRequest) {
     const location = searchParams.get('location')
     const university = searchParams.get('university')
     const search = searchParams.get('search')
+    const listingType = searchParams.get('listingType')
     const sortBy = searchParams.get('sortBy') || 'createdAt'
     const sortOrder = searchParams.get('sortOrder') || 'desc'
 
@@ -66,26 +66,54 @@ export async function GET(request: NextRequest) {
 
     if (location && location !== 'all') {
       where.location = {
-        contains: location
+        contains: location,
+        mode: 'insensitive'
       }
     }
 
     if (university && university !== 'all') {
       where.university = {
-        contains: university
+        contains: university,
+        mode: 'insensitive'
       }
+    }
+
+    if (listingType && listingType !== 'all' && ['sell', 'trade', 'rent'].includes(listingType)) {
+      where.listingType = listingType
     }
 
     if (search) {
       where.OR = [
         {
           title: {
-            contains: search
+            contains: search,
+            mode: 'insensitive'
           }
         },
         {
           description: {
-            contains: search
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          category: {
+            name: {
+              contains: search,
+              mode: 'insensitive'
+            }
+          }
+        },
+        {
+          location: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          university: {
+            contains: search,
+            mode: 'insensitive'
           }
         }
       ]

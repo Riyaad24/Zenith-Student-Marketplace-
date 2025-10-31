@@ -199,7 +199,7 @@ export function FileUpload({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept={type === 'profile' ? 'image/*' : 'image/*,.pdf'}
+          accept={type === 'profile' ? 'image/*' : '.jpg,.jpeg,.png,.webp,application/pdf'}
           onChange={handleFileInputChange}
         />
       </CardContent>

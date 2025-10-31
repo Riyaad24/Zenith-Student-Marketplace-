@@ -76,18 +76,28 @@ class AuthService {
         });
 
         // Assign default student role
-        const studentRole = await tx.userRole.findUnique({
-          where: { name: 'Student' },
+        let studentRole = await tx.userRole.findUnique({
+          where: { name: 'student' }, // Use lowercase to match API route
         });
 
-        if (studentRole) {
-          await tx.userRoleAssignment.create({
+        // Create role if it doesn't exist
+        if (!studentRole) {
+          studentRole = await tx.userRole.create({
             data: {
-              userId: user.id,
-              roleId: studentRole.id,
-            },
+              name: 'student',
+              description: 'Default student role',
+              permissions: JSON.stringify(['read', 'create_listing', 'purchase', 'message'])
+            }
           });
         }
+
+        // Assign role to user
+        await tx.userRoleAssignment.create({
+          data: {
+            userId: user.id,
+            roleId: studentRole.id,
+          },
+        });
 
         // Log security event
         await this.logSecurityEvent(tx, user.id, 'USER_REGISTERED', 'users', user.id, 'LOW');

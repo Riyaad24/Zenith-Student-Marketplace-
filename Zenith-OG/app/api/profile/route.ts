@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
+import { jwtSecret } from '@/lib/config'
 import { prisma } from '@/lib/prisma'
 
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
     }
 
     // Verify JWT token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as any
+    const decoded = jwt.verify(token, jwtSecret) as any
     
     // Get user with profile data
     const user = await prisma.user.findUnique({
@@ -115,7 +116,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify JWT token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as any
+    const decoded = jwt.verify(token, jwtSecret) as any
     
     const body = await request.json()
     const { firstName, lastName, university, location, bio, phone } = body

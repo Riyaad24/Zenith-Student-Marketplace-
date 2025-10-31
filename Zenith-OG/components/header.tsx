@@ -105,6 +105,18 @@ export default function Header() {
         description: "Explore all available items"
       },
       {
+        title: "Trade Items",
+        href: "/browse?listingType=trade",
+        icon: BookOpen,
+        description: "Exchange items with other students"
+      },
+      {
+        title: "Rent Items",
+        href: "/browse?listingType=rent",
+        icon: BookOpen,
+        description: "Rent textbooks and equipment"
+      },
+      {
         title: "FAQ",
         href: "/faq",
         icon: HelpCircle,
@@ -285,6 +297,15 @@ export default function Header() {
             <div className="relative">
               <WishlistDropdown />
             </div>
+
+            {/* Admin quick access button - visible to admins only */}
+            {!loading && user && (user.isAdmin === true || (user as any).role === 'admin') && (
+              <Link href="/admin/dashboard" aria-label="Admin Portal" className="hidden md:inline-flex">
+                <Button variant="ghost" size="sm" className="text-purple-700 hover:bg-purple-50 p-2 rounded-xl border border-transparent hover:border-purple-200">
+                  <Grid3X3 className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
           </div>
             
             {/* Shopping Cart */}
@@ -320,19 +341,27 @@ export default function Header() {
 
               {/* Desktop User Menu */}
               <div className="hidden md:flex items-center relative" ref={userDropdownRef}>
-                <Button
-                  variant="ghost"
-                  className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 border border-transparent hover:border-purple-200"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                >
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                    {user.firstName?.charAt(0) || user.email?.charAt(0) || 'U'}
-                  </div>
-                  <span className="font-medium text-gray-700 max-w-24 truncate">
-                    {user.firstName || user.email?.split('@')[0] || 'User'}
-                  </span>
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                </Button>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 border border-transparent hover:border-purple-200"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                        {user.firstName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      </div>
+                    </div>
+                    <span className="font-medium text-gray-700 max-w-24 truncate">
+                      {user.firstName || user.email?.split('@')[0] || 'User'}
+                    </span>
+                    {/* Admin badge next to name */}
+                    {!loading && user && (user.isAdmin === true || (user as any).role === 'admin') && (
+                      <span className="bg-purple-600 text-white text-[9px] rounded-full px-2 py-0.5 font-bold whitespace-nowrap shadow-sm">
+                        Admin
+                      </span>
+                    )}
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </Button>
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
@@ -370,14 +399,28 @@ export default function Header() {
                         Messages
                       </Link>
                     </div>
-                    <div className="border-t border-gray-100 py-1">
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
-                      >
-                        <LogOut className="h-4 w-4 mr-3" />
-                        Sign Out
-                      </button>
+                    {/* Admin Portal link - shown only for admin users */}
+                    <div className="py-1">
+                      {!loading && user && (((user as any).isAdmin === true) || ((user as any).role === 'admin')) && (
+                        <Link
+                          href="/admin/dashboard"
+                          className="flex items-center px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-800 transition-colors duration-150"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <Grid3X3 className="h-4 w-4 mr-3" />
+                          Admin Portal
+                        </Link>
+                      )}
+
+                      <div className="border-t border-gray-100 py-1">
+                        <button
+                          onClick={handleSignOut}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
+                        >
+                          <LogOut className="h-4 w-4 mr-3" />
+                          Sign Out
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -418,6 +461,17 @@ export default function Header() {
                       <MessageSquare className="h-4 w-4 mr-3" />
                       Messages
                     </Link>
+                    {/* Admin Portal link for mobile dropdown */}
+                    {!loading && user && (((user as any).isAdmin === true) || ((user as any).role === 'admin')) && (
+                      <Link
+                        href="/admin/dashboard"
+                        className="flex items-center px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-800 transition-colors duration-150"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <Grid3X3 className="h-4 w-4 mr-3" />
+                        Admin Portal
+                      </Link>
+                    )}
                   </div>
                   <div className="border-t border-gray-100 py-1">
                     <button

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { AuthProvider } from './auth-provider'
 import { CartProvider } from './cart-provider'
 import { WishlistProvider } from './wishlist-provider'
+import { ToastProvider } from './ui/toast'
 import SplashScreen from './splash-screen-video'
 
 interface ClientLayoutProps {
@@ -47,13 +48,15 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <AuthProvider>
       <CartProvider>
         <WishlistProvider>
-          <div 
-            className={`min-h-screen transition-opacity duration-500 ${
-              showContent ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            {children}
-          </div>
+          <ToastProvider>
+            <div 
+              className={`min-h-screen transition-opacity duration-500 ${
+                showContent ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              {children}
+            </div>
+          </ToastProvider>
         </WishlistProvider>
       </CartProvider>
     </AuthProvider>

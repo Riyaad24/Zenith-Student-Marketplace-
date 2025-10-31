@@ -1,22 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
+import { jwtSecret } from '@/lib/config'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
-
-// Get wishlist items for the authenticated user
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // Get the token from the Authorization header
-    const token = req.headers.get('authorization')?.replace('Bearer ', '') || 
-                  req.cookies.get('auth-token')?.value
+    // Get the token from cookies
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Verify the token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as { userId: string }
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string }
     
     if (!decoded.userId) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify the token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as { userId: string }
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string }
     
     if (!decoded.userId) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
@@ -205,7 +204,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Verify the token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as { userId: string }
+    const decoded = jwt.verify(token, jwtSecret) as { userId: string }
     
     if (!decoded.userId) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })

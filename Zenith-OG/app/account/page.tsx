@@ -117,8 +117,8 @@ export default function AccountPage() {
       }
       
       // Check if all documents are uploaded
-      const hasAllDocs = (updated.profilePicture && updated.studentCardImage && updated.idDocumentImage)
-      updated.documentsUploaded = hasAllDocs || false
+      const hasAllDocs = !!(updated.profilePicture && updated.studentCardImage && updated.idDocumentImage)
+      updated.documentsUploaded = hasAllDocs
       
       return updated
     })
@@ -491,8 +491,8 @@ export default function AccountPage() {
                       type="studentCard"
                       currentFile={profile.studentCardImage}
                       onUploadSuccess={(url) => handleFileUpload('studentCard', url)}
-                      title="Student Card"
-                      description="Upload a photo of your student card"
+                      title="Proof of registration"
+                      description="Upload an official proof of registration/enrolment letter showing your name, institution, and current year/semester."
                       acceptedFormats="JPEG, PNG, WebP, PDF"
                       maxSize="10MB"
                     />
@@ -511,7 +511,7 @@ export default function AccountPage() {
                   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Verification Process:</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
-                      <li>1. Upload all three required documents (profile picture, student card, and ID)</li>
+                      <li>1. Upload all three required documents (profile picture, proof of registration, and ID)</li>
                       <li>2. Our support team will review your documents within 24-48 hours</li>
                       <li>3. Once verified, you'll get a green verification badge on your profile</li>
                       <li>4. Verified students get priority in search results and buyer trust</li>

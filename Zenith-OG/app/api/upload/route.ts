@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
+import { jwtSecret } from '@/lib/config'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { prisma } from '@/lib/prisma'
 import { validateVerificationFile } from '@/lib/validation'
-
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
 
 interface JWTPayload {
   userId: string
@@ -23,7 +22,7 @@ async function getAuthenticatedUser(request: NextRequest) {
       return null
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    const decoded = jwt.verify(token, jwtSecret) as JWTPayload
     return decoded
   } catch (error) {
     return null

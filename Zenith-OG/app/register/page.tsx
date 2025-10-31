@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { signUp } from "@/app/actions/auth"
 import Link from "next/link"
 import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
 import { validateStudentEmail, validateSAPhoneNumber, getInstitutionName } from "@/lib/validation"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/toast"
 
 const universities = [
   "University of Cape Town",
@@ -45,7 +47,10 @@ const universities = [
 ]
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const { refreshUser } = useAuth()
+  const toast = useToast()
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -114,24 +119,58 @@ export default function RegisterPage() {
       return
     }
 
-    // Create FormData for server action
-    const submitData = new FormData()
-    submitData.append('firstName', formData.firstName)
-    submitData.append('lastName', formData.lastName)
-    submitData.append('email', formData.email)
-    submitData.append('phone', phoneValidation.formatted || formData.phone)
-    submitData.append('password', formData.password)
-    submitData.append('university', formData.university)
+    // Call API directly instead of server action
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: phoneValidation.formatted || formData.phone,
+          password: formData.password,
+          university: formData.university,
+        }),
+        credentials: 'include',
+      })
 
-    const result = await signUp(submitData)
+      const result = await response.json()
 
-    if (result.error) {
-      setMessage({ type: "error", text: result.error })
-    } else if (result.success) {
-      setMessage({ type: "success", text: result.message || "Account created successfully!" })
+      if (!response.ok || result.error) {
+        setMessage({ type: "error", text: result.error || 'Registration failed' })
+        setLoading(false)
+        return
+      }
+
+      // Store token if provided
+      if (result.token) {
+        localStorage.setItem('auth-token', result.token)
+      }
+
+      // Show toast success
+      try {
+        toast.showToast('success', result.message || 'Account created — signing you in...')
+      } catch (e) {
+        // no-op if toast unavailable
+      }
+
+      // Refresh client auth state
+      await refreshUser()
+      console.log('User auth refreshed after registration')
+
+      // Redirect with full page reload
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('Registration error:', error)
+      setMessage({ type: "error", text: error.message || 'Registration failed' })
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
