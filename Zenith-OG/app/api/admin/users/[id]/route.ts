@@ -8,7 +8,7 @@ import { auditLog } from '@/lib/audit'
 async function handleUserGet(
   request: NextRequest,
   authResult: any,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const admin = authResult.admin
@@ -16,11 +16,8 @@ async function handleUserGet(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Await params as per Next.js 15+ requirements
-    const { id } = await params
-
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: { id: params.id },
       include: {
         roleAssignments: {
           include: { role: true }
@@ -41,7 +38,6 @@ async function handleUserGet(
             title: true,
             price: true,
             status: true,
-            images: true,
             createdAt: true
           },
           orderBy: { createdAt: 'desc' },
@@ -73,7 +69,7 @@ async function handleUserGet(
     }
 
     // Log view action for audit
-    await auditLog(authResult.adminId, id, 'VIEW_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId, params.id, 'VIEW_USER', null, getClientIP(request))
 
     return NextResponse.json({
       user: {
@@ -113,7 +109,7 @@ async function handleUserGet(
 async function handleUserPut(
   request: NextRequest,
   authResult: any,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const admin = authResult.admin
@@ -121,14 +117,11 @@ async function handleUserPut(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Await params as per Next.js 15+ requirements
-    const { id } = await params
-
     const updateData = await request.json()
     
     // Get current user data for audit log
     const currentUser = await prisma.user.findUnique({
-      where: { id },
+      where: { id: params.id },
       include: {
         security: true,
         roleAssignments: {
@@ -144,7 +137,7 @@ async function handleUserPut(
     const updatedUser = await prisma.$transaction(async (tx) => {
       // Update user profile
       const user = await tx.user.update({
-        where: { id },
+        where: { id: params.id },
         data: {
           firstName: updateData.firstName,
           lastName: updateData.lastName,
@@ -152,7 +145,10 @@ async function handleUserPut(
           phone: updateData.phone,
           location: updateData.location,
           bio: updateData.bio,
-          verified: updateData.verified
+          verified: updateData.verified,
+          adminVerified: updateData.adminVerified,
+          verificationNotes: updateData.verificationNotes,
+          verifiedAt: updateData.adminVerified && !currentUser.adminVerified ? new Date() : currentUser.verifiedAt
         },
         include: {
           roleAssignments: {
@@ -164,7 +160,7 @@ async function handleUserPut(
       // Update security settings if provided
       if (updateData.accountLocked !== undefined) {
         await tx.accountSecurity.update({
-          where: { userId: id },
+          where: { userId: params.id },
           data: {
             accountLocked: updateData.accountLocked,
             lockedUntil: updateData.accountLocked ? null : undefined,
@@ -173,11 +169,24 @@ async function handleUserPut(
         })
       }
 
+      // Send notification if user was just verified
+      if (updateData.adminVerified && !currentUser.adminVerified) {
+        await tx.notification.create({
+          data: {
+            userId: params.id,
+            type: 'verification_approved',
+            title: '✅ Account Verified!',
+            message: 'Congratulations! Your verification documents have been reviewed and approved by our admin team. Your account is now fully verified and you have access to all marketplace features.',
+            read: false
+          }
+        })
+      }
+
       return user
     })
 
     // Log admin action
-    await auditLog(authResult.adminId, id, 'UPDATE_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId, params.id, 'UPDATE_USER', null, getClientIP(request))
 
     return NextResponse.json({
       success: true,
@@ -202,7 +211,7 @@ async function handleUserPut(
 async function handleUserDelete(
   request: NextRequest,
   authResult: any,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const admin = authResult.admin
@@ -210,12 +219,9 @@ async function handleUserDelete(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Await params as per Next.js 15+ requirements
-    const { id } = await params
-
     // Get user data for audit log before deletion
     const user = await prisma.user.findUnique({
-      where: { id },
+      where: { id: params.id },
       select: {
         id: true,
         email: true,
@@ -231,7 +237,7 @@ async function handleUserDelete(
 
     // Prevent deleting other admin users
     const targetUser = await prisma.user.findUnique({
-      where: { id },
+      where: { id: params.id },
       include: { admin: true }
     })
 
@@ -239,18 +245,51 @@ async function handleUserDelete(
       return NextResponse.json({ error: 'Cannot delete other admin users' }, { status: 403 })
     }
 
-    // Delete related products first to avoid foreign key constraint violations
-    await prisma.product.deleteMany({
-      where: { sellerId: id }
-    })
-
-    // Delete user (cascading deletes will handle remaining related records)
-    await prisma.user.delete({
-      where: { id }
+    // Delete related records first to avoid foreign key constraint errors
+    await prisma.$transaction(async (tx) => {
+      // Delete user's products and related data
+      await tx.review.deleteMany({ where: { userId: params.id } })
+      await tx.wishlistItem.deleteMany({ where: { userId: params.id } })
+      await tx.cartItem.deleteMany({ where: { userId: params.id } })
+      await tx.notification.deleteMany({ where: { userId: params.id } })
+      await tx.address.deleteMany({ where: { userId: params.id } })
+      
+      // Delete messages
+      await tx.message.deleteMany({
+        where: {
+          OR: [
+            { senderId: params.id },
+            { receiverId: params.id }
+          ]
+        }
+      })
+      
+      // Delete orders
+      await tx.order.deleteMany({ where: { userId: params.id } })
+      
+      // Delete products
+      await tx.product.deleteMany({ where: { sellerId: params.id } })
+      
+      // Delete security-related records
+      await tx.securityAuditLog.deleteMany({ where: { userId: params.id } })
+      await tx.dataAccessLog.deleteMany({ where: { userId: params.id } })
+      await tx.userSession.deleteMany({ where: { userId: params.id } })
+      await tx.accountSecurity.deleteMany({ where: { userId: params.id } })
+      
+      // Delete admin record if exists
+      await tx.admin.deleteMany({ where: { userId: params.id } })
+      
+      // Delete role assignments (should cascade but delete explicitly for safety)
+      await tx.userRoleAssignment.deleteMany({ where: { userId: params.id } })
+      
+      // Finally delete the user
+      await tx.user.delete({
+        where: { id: params.id }
+      })
     })
 
     // Log admin action
-    await auditLog(authResult.adminId, id, 'DELETE_USER', null, getClientIP(request))
+    await auditLog(authResult.adminId, params.id, 'DELETE_USER', null, getClientIP(request))
 
     return NextResponse.json({
       success: true,

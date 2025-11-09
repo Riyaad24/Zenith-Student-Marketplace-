@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,177 +9,123 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Globe, MapPin, Star, User } from "lucide-react"
+import { CheckCircle, Globe, MapPin, Star, User, Users } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
-// Sample tutor data
-const tutors = [
-  {
-    id: "1",
-    name: "Sarah Johnson",
-    photo: "/placeholder.svg?height=100&width=100&text=SJ",
-    courses: ["MATH151", "MATH152", "STAT101"],
-    institution: "University of Cape Town",
-    hourlyRate: 200,
-    mode: ["Online", "In-person"],
-    location: "Cape Town Central",
-    rating: 4.8,
-    reviewCount: 24,
-    verified: true,
-    qualification: "MSc Mathematics (3rd Year)",
-  },
-  {
-    id: "2",
-    name: "David Nkosi",
-    photo: "/placeholder.svg?height=100&width=100&text=DN",
-    courses: ["PHY101", "PHY202", "CHEM101"],
-    institution: "University of the Witwatersrand",
-    hourlyRate: 180,
-    mode: ["Online"],
-    location: "Johannesburg",
-    rating: 4.9,
-    reviewCount: 31,
-    verified: true,
-    qualification: "BSc Physics (Honours)",
-  },
-  {
-    id: "3",
-    name: "Thandi Mbeki",
-    photo: "/placeholder.svg?height=100&width=100&text=TM",
-    courses: ["ACC101", "FIN201", "ECON102"],
-    institution: "University of Pretoria",
-    hourlyRate: 220,
-    mode: ["In-person"],
-    location: "Pretoria",
-    rating: 4.7,
-    reviewCount: 18,
-    verified: true,
-    qualification: "BCom Accounting (3rd Year)",
-  },
-  {
-    id: "4",
-    name: "Michael van der Merwe",
-    photo: "/placeholder.svg?height=100&width=100&text=MM",
-    courses: ["CS101", "CS202", "DATA301"],
-    institution: "Stellenbosch University",
-    hourlyRate: 250,
-    mode: ["Online", "In-person"],
-    location: "Stellenbosch",
-    rating: 4.9,
-    reviewCount: 42,
-    verified: true,
-    qualification: "MSc Computer Science (Final Year)",
-  },
-  {
-    id: "5",
-    name: "Lerato Molefe",
-    photo: "/placeholder.svg?height=100&width=100&text=LM",
-    courses: ["BIO101", "BIO202", "MBIO301"],
-    institution: "University of KwaZulu-Natal",
-    hourlyRate: 190,
-    mode: ["Online"],
-    location: "Durban",
-    rating: 4.6,
-    reviewCount: 15,
-    verified: true,
-    qualification: "BSc Biology (Honours)",
-  },
-  {
-    id: "6",
-    name: "James Peterson",
-    photo: "/placeholder.svg?height=100&width=100&text=JP",
-    courses: ["ENG101", "LIT202", "WRIT101"],
-    institution: "Rhodes University",
-    hourlyRate: 170,
-    mode: ["Online", "In-person"],
-    location: "Makhanda",
-    rating: 4.7,
-    reviewCount: 22,
-    verified: false,
-    qualification: "BA English Literature (3rd Year)",
-  },
-]
-
-// Filter options
-const institutions = [
-  "All Institutions",
-  "University of Cape Town",
-  "University of the Witwatersrand",
-  "University of Pretoria",
-  "Stellenbosch University",
-  "University of KwaZulu-Natal",
-  "Rhodes University",
-  "University of Johannesburg",
-  "UNISA",
-  "DUT",
-]
-
-const subjects = [
-  "All Subjects",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "Accounting",
-  "Economics",
-  "Finance",
-  "English",
-  "Engineering",
-]
-
-const qualificationLevels = [
-  "All Levels",
-  "Undergraduate (NQF 5-6)",
-  "Bachelor's Degree (NQF 7)",
-  "Honours (NQF 8)",
-  "Master's (NQF 9)",
-  "PhD (NQF 10)",
-]
-
-const deliveryMethods = ["All Methods", "Online", "In-person", "Both"]
-
-const locations = [
-  "All Locations",
-  "Cape Town",
-  "Johannesburg",
-  "Pretoria",
-  "Durban",
-  "Stellenbosch",
-  "Makhanda",
-  "Port Elizabeth",
-  "Bloemfontein",
-]
-
 export default function TutoringPage() {
+  const [selectedInstitution, setSelectedInstitution] = useState("")
+  const [selectedSubject, setSelectedSubject] = useState("")
+  const [selectedQualification, setSelectedQualification] = useState("")
+  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState("")
+  const [selectedLocation, setSelectedLocation] = useState("")
+  const [priceRange, setPriceRange] = useState([0, 500])
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedInstitution, setSelectedInstitution] = useState("All Institutions")
-  const [selectedSubject, setSelectedSubject] = useState("All Subjects")
-  const [selectedQualification, setSelectedQualification] = useState("All Levels")
-  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState("All Methods")
-  const [selectedLocation, setSelectedLocation] = useState("All Locations")
-  const [priceRange, setPriceRange] = useState([0, 300])
+  
+  // Fetch real tutoring services from database
+  const [tutors, setTutors] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchTutors = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/products?category=Tutoring')
+        if (response.ok) {
+          const data = await response.json()
+          setTutors(data.products || [])
+        } else {
+          setTutors([])
+        }
+      } catch (error) {
+        console.error('Error fetching tutors:', error)
+        setTutors([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTutors()
+  }, [])
+
+  // Filter options
+  const institutions = [
+    "All Institutions",
+    "University of Cape Town",
+    "University of the Witwatersrand",
+    "University of Pretoria",
+    "Stellenbosch University",
+    "University of KwaZulu-Natal",
+    "Rhodes University",
+    "University of Johannesburg",
+    "UNISA",
+    "DUT",
+  ]
+
+  const subjects = [
+    "All Subjects",
+    "Mathematics",
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Computer Science",
+    "Accounting",
+    "Economics",
+    "Finance",
+    "English",
+    "Engineering",
+  ]
+
+  const qualificationLevels = [
+    "All Levels",
+    "Undergraduate (NQF 5-6)",
+    "Bachelor's Degree (NQF 7)",
+    "Honours (NQF 8)",
+    "Master's (NQF 9)",
+    "PhD (NQF 10)",
+  ]
+
+  const deliveryMethods = ["All Methods", "Online", "In-person", "Both"]
+
+  const locations = [
+    "All Locations",
+    "Cape Town",
+    "Johannesburg",
+    "Pretoria",
+    "Durban",
+    "Stellenbosch",
+    "Makhanda",
+    "Port Elizabeth",
+    "Bloemfontein",
+  ]
+
+  // Additional state for filtering (matching what the UI expects)
+  const [searchQuery2, setSearchQuery2] = useState("")
+  const [selectedInstitution2, setSelectedInstitution2] = useState("All Institutions")
+  const [selectedSubject2, setSelectedSubject2] = useState("All Subjects")
+  const [selectedQualification2, setSelectedQualification2] = useState("All Levels")
+  const [selectedDeliveryMethod2, setSelectedDeliveryMethod2] = useState("All Methods")
+  const [selectedLocation2, setSelectedLocation2] = useState("All Locations")
+  const [priceRange2, setPriceRange2] = useState([0, 300])
   const [minRating, setMinRating] = useState(0)
 
   // Filter tutors based on selected filters
-  const filteredTutors = tutors.filter((tutor) => {
+  const filteredTutors = tutors.filter((tutor: any) => {
     // Search query filter
     if (
-      searchQuery &&
-      !tutor.courses.some((course) => course.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      !tutor.name.toLowerCase().includes(searchQuery.toLowerCase())
+      searchQuery2 &&
+      !tutor.courses?.some((course: any) => course.toLowerCase().includes(searchQuery2.toLowerCase())) &&
+      !tutor.name?.toLowerCase().includes(searchQuery2.toLowerCase())
     ) {
       return false
     }
 
     // Institution filter
-    if (selectedInstitution !== "All Institutions" && tutor.institution !== selectedInstitution) {
+    if (selectedInstitution2 !== "All Institutions" && tutor.institution !== selectedInstitution2) {
       return false
     }
 
     // Subject filter (simplified for demo)
-    if (selectedSubject !== "All Subjects") {
+    if (selectedSubject2 !== "All Subjects") {
       const subjectMap: { [key: string]: string[] } = {
         Mathematics: ["MATH", "STAT"],
         Physics: ["PHY"],
@@ -192,27 +138,28 @@ export default function TutoringPage() {
         English: ["ENG", "LIT", "WRIT"],
       }
 
-      const relevantPrefixes = subjectMap[selectedSubject] || []
-      if (!tutor.courses.some((course) => relevantPrefixes.some((prefix) => course.startsWith(prefix)))) {
+      const relevantPrefixes = subjectMap[selectedSubject2] || []
+      if (!tutor.courses?.some((course: any) => relevantPrefixes.some((prefix) => course.startsWith(prefix)))) {
         return false
       }
     }
 
     // Delivery method filter
     if (
-      selectedDeliveryMethod !== "All Methods" &&
-      !tutor.mode.includes(selectedDeliveryMethod === "Both" ? "Online" : selectedDeliveryMethod)
+      selectedDeliveryMethod2 !== "All Methods" &&
+      !tutor.mode?.includes(selectedDeliveryMethod2 === "Both" ? "Online" : selectedDeliveryMethod2)
     ) {
       return false
     }
 
     // Location filter (simplified)
-    if (selectedLocation !== "All Locations" && !tutor.location.includes(selectedLocation)) {
+    if (selectedLocation2 !== "All Locations" && !tutor.location?.includes(selectedLocation2)) {
       return false
     }
 
     // Price range filter
-    if (tutor.hourlyRate < priceRange[0] || tutor.hourlyRate > priceRange[1]) {
+    const hourlyRate = tutor.hourlyRate || tutor.price || 0
+    if (hourlyRate < priceRange2[0] || hourlyRate > priceRange2[1]) {
       return false
     }
 
@@ -399,9 +346,9 @@ export default function TutoringPage() {
         {/* Tutors List */}
         <div className="lg:col-span-3">
           <Tabs defaultValue="grid">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Showing {filteredTutors.length} of {tutors.length} tutors
+                {loading ? 'Loading tutors...' : `Showing ${filteredTutors.length} of ${tutors.length} tutors`}
               </div>
               <TabsList>
                 <TabsTrigger value="grid">Grid</TabsTrigger>
@@ -410,8 +357,19 @@ export default function TutoringPage() {
             </div>
 
             <TabsContent value="grid" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredTutors.map((tutor) => (
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading tutoring services...</p>
+                </div>
+              ) : filteredTutors.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No tutors found</h3>
+                  <p className="text-gray-500">Try adjusting your filters or search terms</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredTutors.map((tutor: any) => (
                   <Card key={tutor.id} className="overflow-hidden hover-card">
                     <CardHeader className="p-4">
                       <div className="flex items-start gap-4">
@@ -487,12 +445,24 @@ export default function TutoringPage() {
                     </CardFooter>
                   </Card>
                 ))}
-              </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="list" className="mt-0">
-              <div className="space-y-4">
-                {filteredTutors.map((tutor) => (
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading tutoring services...</p>
+                </div>
+              ) : filteredTutors.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No tutors found</h3>
+                  <p className="text-gray-500">Try adjusting your filters or search terms</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredTutors.map((tutor: any) => (
                   <Card key={tutor.id} className="overflow-hidden hover-card">
                     <div className="p-4 flex flex-col md:flex-row gap-4">
                       <div className="flex items-center md:items-start gap-4">
@@ -553,7 +523,7 @@ export default function TutoringPage() {
                       </div>
 
                       <div className="flex flex-col md:items-end justify-between gap-4">
-                        <div className="font-bold text-lg">R{tutor.hourlyRate}/hr</div>
+                        <div className="font-bold text-lg">R{tutor.hourlyRate || tutor.price || 0}/hr</div>
                         <div className="flex gap-2">
                           <Link href={`/categories/tutoring/profile/${tutor.id}`}>
                             <Button variant="outline">View Profile</Button>
@@ -566,7 +536,8 @@ export default function TutoringPage() {
                     </div>
                   </Card>
                 ))}
-              </div>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
 

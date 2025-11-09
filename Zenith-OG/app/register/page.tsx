@@ -10,41 +10,7 @@ import { InlineLoader } from "@/components/ui/loader"
 import { validateStudentEmail, validateSAPhoneNumber, getInstitutionName } from "@/lib/validation"
 import { useAuth } from "@/components/auth-provider"
 import { useToast } from "@/components/ui/toast"
-
-const universities = [
-  "University of Cape Town",
-  "University of the Witwatersrand",
-  "Stellenbosch University",
-  "University of Pretoria",
-  "University of KwaZulu-Natal",
-  "University of Johannesburg",
-  "Rhodes University",
-  "North-West University",
-  "University of the Free State",
-  "University of the Western Cape",
-  "Nelson Mandela University",
-  "University of South Africa (UNISA)",
-  "Tshwane University of Technology",
-  "Cape Peninsula University of Technology",
-  "Durban University of Technology",
-  "Central University of Technology",
-  "Vaal University of Technology",
-  "Mangosuthu University of Technology",
-  "Richfield Graduate Institute of Technology",
-  "Eduvos",
-  "Boston City Campus",
-  "Damelin",
-  "Rosebank College",
-  "Varsity College",
-  "The Independent Institute of Education (IIE)",
-  "Monash South Africa",
-  "University of Fort Hare",
-  "Walter Sisulu University",
-  "University of Limpopo",
-  "University of Zululand",
-  "Sol Plaatje University",
-  "University of Mpumalanga",
-]
+import { SOUTH_AFRICAN_INSTITUTIONS } from "@/lib/institutions"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -309,7 +275,7 @@ export default function RegisterPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="">Select your institution</option>
-                {universities.map((uni) => (
+                {SOUTH_AFRICAN_INSTITUTIONS.map((uni) => (
                   <option key={uni} value={uni}>
                     {uni}
                   </option>

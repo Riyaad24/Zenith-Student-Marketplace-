@@ -44,10 +44,11 @@ interface Conversation {
 interface UseMessagingOptions {
   pollInterval?: number
   enablePolling?: boolean
+  enableRealtime?: boolean
 }
 
 export function useMessaging(options: UseMessagingOptions = {}) {
-  const { pollInterval = 3000, enablePolling = true } = options
+  const { pollInterval = 3000, enablePolling = false, enableRealtime = true } = options
   
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConversation, setActiveConversation] = useState<string | null>(null)
@@ -55,9 +56,11 @@ export function useMessaging(options: UseMessagingOptions = {}) {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isConnected, setIsConnected] = useState(false)
   
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastMessageTimestamp = useRef<string | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
@@ -216,27 +219,120 @@ export function useMessaging(options: UseMessagingOptions = {}) {
     }
   }, [])
 
-  // Initialize and start polling
+  // Real-time connection using Server-Sent Events
+  const connectRealtime = useCallback(() => {
+    if (!enableRealtime) return
+
+    // Close existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+    }
+
+    try {
+      const since = lastMessageTimestamp.current || new Date().toISOString()
+      const eventSource = new EventSource(`/api/messages/stream?since=${since}`)
+      
+      eventSource.onopen = () => {
+        console.log('Real-time messaging connected')
+        setIsConnected(true)
+        setError(null)
+      }
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          
+          if (data.type === 'connected') {
+            console.log('SSE connection established')
+          } else if (data.type === 'messages' && data.data) {
+            // Update messages if they match the active conversation
+            const newMessages = data.data as Message[]
+            if (newMessages.length > 0 && activeConversation) {
+              setMessages(prev => {
+                const messageIds = new Set(prev.map(m => m.id))
+                const uniqueNewMessages = newMessages.filter(
+                  m => !messageIds.has(m.id) && 
+                  ((m.sender_id === activeConversation || m.receiver_id === activeConversation))
+                )
+                if (uniqueNewMessages.length > 0) {
+                  const combined = [...prev, ...uniqueNewMessages]
+                  const sorted = combined.sort(
+                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                  )
+                  lastMessageTimestamp.current = sorted[sorted.length - 1].created_at
+                  return sorted
+                }
+                return prev
+              })
+            }
+
+            // Refresh conversations to update unread counts
+            fetchConversations()
+          }
+        } catch (err) {
+          console.error('Error parsing SSE message:', err)
+        }
+      }
+
+      eventSource.onerror = (err) => {
+        console.error('SSE connection error:', err)
+        setIsConnected(false)
+        setError('Real-time connection lost. Retrying...')
+        
+        // Retry connection after 3 seconds
+        setTimeout(() => {
+          connectRealtime()
+        }, 3000)
+      }
+
+      eventSourceRef.current = eventSource
+    } catch (err) {
+      console.error('Failed to establish SSE connection:', err)
+      setError('Failed to connect to real-time messaging')
+    }
+  }, [enableRealtime, activeConversation, fetchConversations])
+
+  const disconnectRealtime = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+      setIsConnected(false)
+    }
+  }, [])
+
+  // Initialize and start real-time connection or polling
   useEffect(() => {
     const initialize = async () => {
       setLoading(true)
       await fetchConversations()
       setLoading(false)
-      startPolling()
+      
+      // Use real-time connection if enabled, otherwise fall back to polling
+      if (enableRealtime) {
+        connectRealtime()
+      } else if (enablePolling) {
+        startPolling()
+      }
     }
     
     initialize()
     
     return () => {
+      disconnectRealtime()
       stopPolling()
     }
-  }, [fetchConversations, startPolling, stopPolling])
+  }, [fetchConversations, connectRealtime, disconnectRealtime, startPolling, stopPolling, enableRealtime, enablePolling])
 
-  // Restart polling when active conversation changes
+  // Reconnect when active conversation changes
   useEffect(() => {
-    stopPolling()
-    startPolling()
-  }, [activeConversation, startPolling, stopPolling])
+    if (enableRealtime) {
+      disconnectRealtime()
+      connectRealtime()
+    } else if (enablePolling) {
+      stopPolling()
+      startPolling()
+    }
+  }, [activeConversation, connectRealtime, disconnectRealtime, startPolling, stopPolling, enableRealtime, enablePolling])
 
   // Calculate total unread count
   const totalUnreadCount = conversations.reduce((total, conv) => total + conv.unreadCount, 0)
@@ -249,11 +345,14 @@ export function useMessaging(options: UseMessagingOptions = {}) {
     sending,
     error,
     totalUnreadCount,
+    isConnected,
     sendMessage,
     openConversation,
     markAsRead,
     fetchConversations,
     startPolling,
     stopPolling,
+    connectRealtime,
+    disconnectRealtime,
   }
 }

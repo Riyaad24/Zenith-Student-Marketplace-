@@ -2,24 +2,82 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Laptop, MessageSquare, ShieldCheck, Users, ArrowLeftRight, Calendar } from "lucide-react"
+import { BookOpen, Laptop, MessageSquare, ShieldCheck, Users, GraduationCap, FileText, Shield, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/components/auth-provider"
 import StatsCounter from "@/components/stats-counter"
-import { useInView } from "react-intersection-observer"
+import { useScrollReveal } from "./hooks/useScrollReveal"
+import "./scroll-reveal.css"
+import { useEffect, useState } from "react"
 
 export default function Home() {
   const { user, loading } = useAuth()
-  
-  // Intersection observers for scroll animations
-  const [heroRef, heroInView] = useInView({ triggerOnce: true, threshold: 0.2 })
-  const [tradeRentRef, tradeRentInView] = useInView({ triggerOnce: true, threshold: 0.2 })
-  const [featuresRef, featuresInView] = useInView({ triggerOnce: true, threshold: 0.1 })
-  const [howItWorksRef, howItWorksInView] = useInView({ triggerOnce: true, threshold: 0.2 })
-  const [ctaRef, ctaInView] = useInView({ triggerOnce: true, threshold: 0.3 })
+  const featuresRef = useScrollReveal()
+  const howItWorksRef = useScrollReveal()
+  const ctaRef = useScrollReveal()
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false)
+
+  // Fetch user profile to check verification status
+  useEffect(() => {
+    if (user && !loading) {
+      fetch('/api/profile', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            setUserProfile(data.user)
+            // Show banner if not uploaded documents and not dismissed
+            const dismissed = localStorage.getItem('home-verification-dismissed')
+            setShowVerificationBanner(!data.user.documentsUploaded && !dismissed)
+          }
+        })
+        .catch(err => console.error('Failed to fetch profile:', err))
+    }
+  }, [user, loading])
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Verification Banner - Shows for logged-in unverified users */}
+      {showVerificationBanner && user && userProfile && !userProfile.documentsUploaded && (
+        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Shield className="h-6 w-6" />
+                <div>
+                  <p className="font-semibold text-lg">Complete Your Account Verification</p>
+                  <p className="text-sm text-yellow-50">
+                    Submit your verification documents to unlock full marketplace access and build trust with other students.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link href="/account?tab=verification">
+                  <Button 
+                    variant="secondary" 
+                    className="bg-white text-orange-600 hover:bg-yellow-50 font-semibold"
+                  >
+                    Verify Now
+                  </Button>
+                </Link>
+                <button
+                  onClick={() => {
+                    setShowVerificationBanner(false)
+                    localStorage.setItem('home-verification-dismissed', 'true')
+                  }}
+                  className="text-white hover:text-yellow-100 p-1"
+                  aria-label="Dismiss"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section with Better Space Utilization */}
       <section className="relative w-full min-h-[95vh] flex items-center overflow-hidden bg-gradient-to-br from-purple-50 via-white to-purple-100" role="banner">        
         {/* Decorative elements */}
@@ -30,8 +88,8 @@ export default function Home() {
         <div className="relative container px-8 md:px-12 mx-auto max-w-[1400px] w-full">
           <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center min-h-[80vh]">
             {/* Content Section - Much Larger and Better Spaced */}
-            <div ref={heroRef} className={`lg:col-span-7 space-y-10 text-center lg:text-left z-10 ${heroInView ? 'scroll-reveal' : 'opacity-0'}`}>
-              <div className={`space-y-8 ${heroInView ? 'delay-100' : ''}`}>
+            <div className="lg:col-span-7 space-y-10 text-center lg:text-left z-10">
+              <div className="space-y-8">
                 <h1 className="text-6xl font-bold tracking-tight sm:text-7xl xl:text-8xl text-gray-900 leading-tight">
                   Zenith
                   <span className="text-purple-600 block">Student <span className="text-purple-700">Marketplace</span></span>
@@ -42,12 +100,13 @@ export default function Home() {
               </div>
               
               {/* Action buttons with much better presence */}
-              <div className={`flex flex-col gap-6 sm:flex-row sm:justify-center lg:justify-start items-center pt-6 ${heroInView ? 'delay-200' : ''}`}>
+              <div className="flex flex-col gap-4 sm:flex-row sm:justify-center lg:justify-start items-center pt-6">
                 {!loading && !user && (
                   <Link href="/register" className="w-full sm:w-auto">
                     <Button 
                       size="lg" 
-                      className="bg-purple-600 text-white hover:bg-purple-700 focus:ring-4 focus:ring-purple-300 px-12 py-6 rounded-2xl font-bold text-2xl transition-all duration-200 transform hover:scale-[1.02] shadow-xl hover:shadow-2xl w-full sm:w-auto"
+                      variant="outline"
+                      className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-8 py-5 rounded-2xl font-bold text-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto whitespace-nowrap"
                       aria-label="Create your account to start buying and selling"
                     >
                       Create Account
@@ -58,7 +117,7 @@ export default function Home() {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-12 py-6 rounded-2xl font-bold text-2xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto"
+                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-8 py-5 rounded-2xl font-bold text-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto whitespace-nowrap"
                     aria-label="Browse available products and services"
                   >
                     Browse Products
@@ -68,8 +127,8 @@ export default function Home() {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-12 py-6 rounded-2xl font-bold text-2xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto"
-                    aria-label="Browse products by category"
+                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-8 py-5 rounded-2xl font-bold text-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto whitespace-nowrap"
+                    aria-label="Explore all product categories"
                   >
                     Categories
                   </Button>
@@ -114,79 +173,83 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section with Animated Counters */}
-      <StatsCounter />
-
-      {/* Trade & Rent Section */}
-      <section ref={tradeRentRef} className="w-full py-16 md:py-20 lg:py-24 bg-gradient-to-br from-purple-50 to-white" role="region" aria-labelledby="trade-rent-heading">
+      {/* Tutoring and Study Notes Section */}
+      <section className="w-full py-16 md:py-20 bg-gradient-to-br from-purple-50 to-white">
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
-          <div className={`flex flex-col items-center justify-center space-y-4 text-center mb-12 ${tradeRentInView ? 'scroll-reveal' : 'opacity-0'}`}>
-            <h2 id="trade-rent-heading" className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-gray-900">
-              More Than Just Buying & Selling
-            </h2>
-            <p className="max-w-3xl text-lg md:text-xl text-gray-700 leading-relaxed">
-              Exchange items you don't need or rent equipment for short-term use—flexible options for smart students
-            </p>
-          </div>
-          
-          <div className={`grid md:grid-cols-2 gap-8 md:gap-12 max-w-5xl mx-auto ${tradeRentInView ? 'scroll-reveal delay-200' : 'opacity-0'}`}>
-            {/* Trade Section */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-200"></div>
-              <div className="relative bg-white rounded-2xl p-8 md:p-10 shadow-lg hover:shadow-xl transition-shadow duration-200">
-                <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500">
-                    <ArrowLeftRight className="h-8 w-8 md:h-10 md:w-10 text-white" />
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+            {/* Tutoring Card */}
+            <Link href="/categories/tutoring">
+              <div className="group relative overflow-hidden rounded-3xl bg-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-purple-100 hover:border-purple-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16"></div>
+                <div className="relative p-8 md:p-10">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 shadow-lg group-hover:shadow-purple-300 transition-shadow duration-300">
+                      <MessageSquare className="h-8 w-8 md:h-10 md:w-10 text-white" />
+                    </div>
+                    <div className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
+                      Popular
+                    </div>
                   </div>
-                  <div className="space-y-4">
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Trade Items</h3>
-                    <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-                      Exchange textbooks, course materials, and equipment with other students. No money needed—just swap items you no longer use for things you need.
-                    </p>
+                  <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 group-hover:text-purple-700 transition-colors duration-300">
+                    Tutoring Services
+                  </h3>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
+                    Find experienced tutors or offer your expertise. Connect with students for one-on-one or group tutoring sessions across all subjects.
+                  </p>
+                  <div className="flex items-center text-purple-600 font-semibold text-lg group-hover:translate-x-2 transition-transform duration-300">
+                    Browse Tutors
+                    <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                  <Button 
-                    asChild 
-                    size="lg"
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-6 text-lg rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
-                  >
-                    <Link href="/browse?listingType=trade">Browse Trade Items</Link>
-                  </Button>
                 </div>
               </div>
-            </div>
+            </Link>
 
-            {/* Rent Section */}
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur opacity-25 group-hover:opacity-40 transition duration-200"></div>
-              <div className="relative bg-white rounded-2xl p-8 md:p-10 shadow-lg hover:shadow-xl transition-shadow duration-200">
-                <div className="flex flex-col items-center text-center space-y-6">
-                  <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500">
-                    <Calendar className="h-8 w-8 md:h-10 md:w-10 text-white" />
+            {/* Study Notes Card */}
+            <Link href="/categories/notes">
+              <div className="group relative overflow-hidden rounded-3xl bg-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-purple-100 hover:border-purple-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16"></div>
+                <div className="relative p-8 md:p-10">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 shadow-lg group-hover:shadow-purple-300 transition-shadow duration-300">
+                      <FileText className="h-8 w-8 md:h-10 md:w-10 text-white" />
+                    </div>
+                    <div className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
+                      New
+                    </div>
                   </div>
-                  <div className="space-y-4">
-                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Rent Items</h3>
-                    <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-                      Need textbooks or equipment for just one semester? Rent them at a fraction of the cost instead of buying. Save money and reduce waste.
-                    </p>
+                  <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 group-hover:text-purple-700 transition-colors duration-300">
+                    Study Notes & Guides
+                  </h3>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
+                    Access comprehensive class notes, study guides, and past exam papers shared by top-performing students at your university.
+                  </p>
+                  <div className="flex items-center text-purple-600 font-semibold text-lg group-hover:translate-x-2 transition-transform duration-300">
+                    Browse Notes
+                    <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                  <Button 
-                    asChild 
-                    size="lg"
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-6 text-lg rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
-                  >
-                    <Link href="/browse?listingType=rent">Browse Rental Items</Link>
-                  </Button>
                 </div>
               </div>
-            </div>
+            </Link>
           </div>
         </div>
       </section>
 
+      {/* Stats Section with Animated Counters */}
+      <StatsCounter />
+
       {/* Features Section with Enhanced Scaling */}
-      <section ref={featuresRef} id="features" className="w-full py-20 md:py-28 lg:py-36 bg-white" role="region" aria-labelledby="features-heading">
+      <section 
+        ref={featuresRef.ref}
+        className={`w-full py-20 md:py-28 lg:py-36 bg-white scroll-reveal ${featuresRef.isRevealed ? 'revealed' : ''}`} 
+        role="region" 
+        aria-labelledby="features-heading"
+      >
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
-          <div className={`flex flex-col items-center justify-center space-y-6 text-center mb-20 ${featuresInView ? 'scroll-reveal' : 'opacity-0'}`}>
+          <div className="flex flex-col items-center justify-center space-y-6 text-center mb-20">
             <div className="space-y-6">
               <h2 id="features-heading" className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-gray-900">
                 Everything You Need in One Place
@@ -197,7 +260,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mx-auto grid max-w-7xl items-start gap-12 md:gap-16 sm:grid-cols-2 lg:grid-cols-3">
-            <div className={`flex flex-col items-center space-y-6 text-center group ${featuresInView ? 'scroll-reveal delay-100' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center group">
               <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-purple-100 group-hover:bg-purple-200 transition-colors duration-200">
                 <BookOpen className="h-10 w-10 md:h-12 md:w-12 text-purple-600" />
               </div>
@@ -208,7 +271,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center group ${featuresInView ? 'scroll-reveal delay-200' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center group">
               <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-purple-100 group-hover:bg-purple-200 transition-colors duration-200">
                 <Laptop className="h-10 w-10 md:h-12 md:w-12 text-purple-600" />
               </div>
@@ -219,7 +282,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center group ${featuresInView ? 'scroll-reveal delay-300' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center group">
               <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-purple-100 group-hover:bg-purple-200 transition-colors duration-200">
                 <MessageSquare className="h-10 w-10 md:h-12 md:w-12 text-purple-600" />
               </div>
@@ -230,7 +293,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center group ${featuresInView ? 'scroll-reveal delay-100' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center group">
               <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-purple-100 group-hover:bg-purple-200 transition-colors duration-200">
                 <ShieldCheck className="h-10 w-10 md:h-12 md:w-12 text-purple-600" />
               </div>
@@ -241,7 +304,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center group ${featuresInView ? 'scroll-reveal delay-200' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center group">
               <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-purple-100 group-hover:bg-purple-200 transition-colors duration-200">
                 <Users className="h-10 w-10 md:h-12 md:w-12 text-purple-600" />
               </div>
@@ -252,7 +315,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center group ${featuresInView ? 'scroll-reveal delay-300' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center group">
               <div className="flex h-20 w-20 md:h-24 md:w-24 items-center justify-center rounded-2xl bg-purple-100 group-hover:bg-purple-200 transition-colors duration-200">
                 <svg className="h-10 w-10 md:h-12 md:w-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
@@ -270,9 +333,14 @@ export default function Home() {
       </section>
 
       {/* How It Works Section with Enhanced Scaling */}
-      <section ref={howItWorksRef} className="w-full py-20 md:py-28 lg:py-36 bg-gray-50" role="region" aria-labelledby="how-it-works-heading">
+      <section 
+        ref={howItWorksRef.ref}
+        className={`w-full py-20 md:py-28 lg:py-36 bg-gray-50 scroll-reveal ${howItWorksRef.isRevealed ? 'revealed' : ''}`} 
+        role="region" 
+        aria-labelledby="how-it-works-heading"
+      >
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
-          <div className={`flex flex-col items-center justify-center space-y-6 text-center mb-20 ${howItWorksInView ? 'scroll-reveal' : 'opacity-0'}`}>
+          <div className="flex flex-col items-center justify-center space-y-6 text-center mb-20">
             <div className="space-y-6">
               <h2 id="how-it-works-heading" className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-gray-900">
                 How Zenith Works
@@ -283,7 +351,7 @@ export default function Home() {
             </div>
           </div>
           <div className="mx-auto grid max-w-7xl items-start gap-12 md:gap-16 sm:grid-cols-1 md:grid-cols-3">
-            <div className={`flex flex-col items-center space-y-6 text-center ${howItWorksInView ? 'scroll-reveal delay-100' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center">
               <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-purple-600 text-white font-bold text-2xl md:text-3xl">
                 1
               </div>
@@ -294,7 +362,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center ${howItWorksInView ? 'scroll-reveal delay-200' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center">
               <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-purple-600 text-white font-bold text-2xl md:text-3xl">
                 2
               </div>
@@ -305,7 +373,7 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className={`flex flex-col items-center space-y-6 text-center ${howItWorksInView ? 'scroll-reveal delay-300' : 'opacity-0'}`}>
+            <div className="flex flex-col items-center space-y-6 text-center">
               <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full bg-purple-600 text-white font-bold text-2xl md:text-3xl">
                 3
               </div>
@@ -321,16 +389,21 @@ export default function Home() {
       </section>
 
       {/* Call to Action Section with Enhanced Scaling */}
-      <section ref={ctaRef} className="w-full py-20 md:py-28 lg:py-36 bg-gradient-to-r from-purple-600 to-purple-800" role="region" aria-labelledby="cta-heading">
+      <section 
+        ref={ctaRef.ref}
+        className={`w-full py-20 md:py-28 lg:py-36 bg-gradient-to-r from-purple-600 to-purple-800 scroll-reveal ${ctaRef.isRevealed ? 'revealed' : ''}`} 
+        role="region" 
+        aria-labelledby="cta-heading"
+      >
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
           <div className="flex flex-col items-center justify-center space-y-8 text-center">
-            <div className={`space-y-6 ${ctaInView ? 'scroll-reveal' : 'opacity-0'}`}>
+            <div className="space-y-6">
               <h2 id="cta-heading" className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-white">Ready to Get Started?</h2>
               <p className="max-w-4xl text-xl md:text-2xl text-purple-100 leading-relaxed">
                 Join thousands of South African students already saving money and making connections on Zenith.
               </p>
             </div>
-            <div className={`flex flex-col gap-6 md:gap-8 sm:flex-row sm:justify-center items-center max-w-3xl mx-auto ${ctaInView ? 'scroll-reveal delay-200' : 'opacity-0'}`}>
+            <div className="flex flex-col gap-6 md:gap-8 sm:flex-row sm:justify-center items-center max-w-3xl mx-auto">
               {!loading && !user && (
                 <Link href="/register" className="w-full sm:w-auto">
                   <Button 

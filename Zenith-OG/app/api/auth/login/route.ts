@@ -6,6 +6,8 @@ import { getClientIP } from '@/lib/admin-auth'
 import { logAdminSignin } from '@/lib/audit'
 import { cookies } from 'next/headers'
 
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
+
 export async function POST(request: NextRequest) {
   try {
     const { email: loginEmail, password } = await request.json()
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
             email: user.email,
             roles
           },
-          process.env.NEXTAUTH_SECRET || 'fallback-secret',
+          jwtSecret,
           { expiresIn: '24h' }
         )
 
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         roles
       },
-      process.env.NEXTAUTH_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '24h' }
     )
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react"
 import Image from "next/image"
@@ -8,20 +8,55 @@ import Link from "next/link"
 
 export default function NotePreviewPage({ params }: { params: { id: string } }) {
   const [currentPage, setCurrentPage] = useState(0)
+  const [preview, setPreview] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Sample preview data (in real app, fetch based on params.id)
-  const preview = {
-    id: params.id,
-    title: "Financial Accounting Fundamentals - Complete Study Guide",
-    price: 85,
-    totalPages: 45,
-    previewPages: [
-      "/placeholder.svg?height=1000&width=800&text=Preview+Page+1",
-      "/placeholder.svg?height=1000&width=800&text=Preview+Page+2",
-      "/placeholder.svg?height=1000&width=800&text=Preview+Page+3",
-      "/placeholder.svg?height=1000&width=800&text=Preview+Page+4",
-      "/placeholder.svg?height=1000&width=800&text=Preview+Page+5",
-    ],
+  // Fetch real preview data from API
+  useEffect(() => {
+    const fetchPreview = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/products/${params.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setPreview({
+            id: data.id,
+            title: data.title,
+            price: data.price,
+            totalPages: data.pages || 0,
+            previewPages: data.images || []
+          })
+        } else {
+          console.error('Failed to fetch preview')
+        }
+      } catch (error) {
+        console.error('Error fetching preview:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPreview()
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading preview...</div>
+      </div>
+    )
+  }
+
+  if (!preview || !preview.previewPages || preview.previewPages.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <p className="mb-4">No preview available for this item</p>
+          <Link href={`/categories/notes/${params.id}`}>
+            <Button>Back to Details</Button>
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   const nextPage = () => {

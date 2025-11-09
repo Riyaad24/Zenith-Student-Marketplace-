@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
-import { jwtSecret } from '@/lib/config'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 interface JWTPayload {
   userId: string
@@ -14,13 +15,13 @@ interface JWTPayload {
 async function getAuthenticatedUser(request: NextRequest) {
   try {
     const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const token = cookieStore.get('auth-token')?.value
 
     if (!token) {
       return null
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as JWTPayload
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
     return decoded
   } catch (error) {
     return null

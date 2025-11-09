@@ -6,6 +6,8 @@ import { randomBytes } from 'crypto'
 import { isAdminEmail, extractStudentNumber, checkAdminQuota, ADMIN_PERMISSIONS } from '@/lib/admin-auth'
 import { cookies } from 'next/headers'
 
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password, firstName, lastName, university, phone } = await request.json()
@@ -45,7 +47,10 @@ export async function POST(request: NextRequest) {
 
     // Create user and security record in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create user profile
+      // Check if this will be an admin user first
+      const willBeAdmin = adminMatch ? (await tx.admin.count({ where: { isActive: true } })) < ADMIN_MAX : false
+
+      // Create user profile - admins are automatically verified
       const user = await tx.user.create({
         data: {
           email,
@@ -53,19 +58,48 @@ export async function POST(request: NextRequest) {
           lastName,
           university,
           phone,
-          verified: false,
+          verified: willBeAdmin, // Admins are auto-verified
+          documentsUploaded: willBeAdmin, // Admins don't need to upload docs
+          adminVerified: willBeAdmin, // Admins are pre-verified
+          verifiedAt: willBeAdmin ? new Date() : null,
         },
       })
 
-      // Create security record
+      // Create security record - admins have email auto-verified
       await tx.accountSecurity.create({
         data: {
           userId: user.id,
           passwordHash,
           salt,
           emailVerificationToken: randomBytes(32).toString('hex'),
+          emailVerified: willBeAdmin, // Admins have email auto-verified
+          emailVerifiedAt: willBeAdmin ? new Date() : null,
         },
       })
+
+      // Only create verification reminder notification for non-admin users
+      if (!willBeAdmin) {
+        await tx.notification.create({
+          data: {
+            userId: user.id,
+            type: 'verification_reminder',
+            title: '🎓 Welcome to Zenith! Complete Your Verification',
+            message: 'To unlock full marketplace access and build trust with other students, please submit your verification documents: Profile Picture, Proof of Registration, and Certified ID Copy.',
+            read: false,
+          },
+        })
+      } else {
+        // Create welcome notification for admins
+        await tx.notification.create({
+          data: {
+            userId: user.id,
+            type: 'admin_welcome',
+            title: '🎉 Welcome to Zenith Admin Portal!',
+            message: 'Your admin account has been created and fully verified. You now have access to all administrative features.',
+            read: false,
+          },
+        })
+      }
 
       // Handle admin user creation if email matches pattern
       if (adminMatch) {
@@ -166,7 +200,7 @@ export async function POST(request: NextRequest) {
         email: result.email,
         roles: userRoles
       },
-      process.env.NEXTAUTH_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '24h' }
     )
 

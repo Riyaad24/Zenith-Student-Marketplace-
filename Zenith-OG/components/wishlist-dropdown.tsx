@@ -17,8 +17,10 @@ export default function WishlistDropdown({ className }: WishlistDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
-  const { wishlistItems, removeFromWishlist, loading } = useWishlist()
+  const { wishlistItems, removeFromWishlist, loading, getWishlistCount } = useWishlist()
   const { addItem } = useCart()
+  
+  const wishlistCount = getWishlistCount()
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -86,6 +88,11 @@ export default function WishlistDropdown({ className }: WishlistDropdownProps) {
         onClick={handleClick}
       >
         <Heart className="h-5 w-5" />
+        {wishlistCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold shadow-lg">
+            {wishlistCount > 99 ? '99+' : wishlistCount}
+          </span>
+        )}
         <span className="sr-only">Wishlist</span>
       </Button>
 

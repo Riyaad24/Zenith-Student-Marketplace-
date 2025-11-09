@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { PrismaClient } from '@prisma/client'
 import jwt from 'jsonwebtoken'
-import { jwtSecret } from '@/lib/config'
-import { prisma } from '@/lib/prisma'
 
-export async function GET(request: NextRequest) {
+const prisma = new PrismaClient()
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
+
+// Get wishlist items for the authenticated user
+export async function GET(req: NextRequest) {
   try {
-    // Get the token from cookies
-    const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    // Get the token from the Authorization header
+    const token = req.headers.get('authorization')?.replace('Bearer ', '') || 
+                  req.cookies.get('auth-token')?.value
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,9 +12,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CheckCircle, Upload, User } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
+import { INSTITUTION_OPTIONS } from "@/lib/institutions"
 
 export default function BecomeTutorPage() {
   const [currentStep, setCurrentStep] = useState(1)
+  const [profilePicture, setProfilePicture] = useState<string | null>(null)
+  const [proofOfRegistration, setProofOfRegistration] = useState<File | null>(null)
+  const [transcript, setTranscript] = useState<File | null>(null)
+  const profilePictureInputRef = useRef<HTMLInputElement>(null)
+  const proofInputRef = useRef<HTMLInputElement>(null)
+  const transcriptInputRef = useRef<HTMLInputElement>(null)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
+  
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -29,8 +39,109 @@ export default function BecomeTutorPage() {
     transcriptUploaded: false,
   })
 
+  // Check if user is already logged in and skip account creation
+  useEffect(() => {
+    const checkAuthAndLoadProfile = async () => {
+      const token = localStorage.getItem('auth-token')
+      
+      if (token) {
+        try {
+          // Fetch user profile to pre-fill data
+          const response = await fetch('/api/profile', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            // Skip to step 2 and pre-fill name
+            setCurrentStep(2)
+            setFormData(prev => ({
+              ...prev,
+              fullName: userData.fullName || "",
+              email: userData.email || ""
+            }))
+          }
+        } catch (error) {
+          console.error('Error loading profile:', error)
+        }
+      }
+      
+      setIsLoadingProfile(false)
+    }
+    
+    checkAuthAndLoadProfile()
+  }, [])
+
   const handleInputChange = (field: string, value: string | string[] | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file')
+        return
+      }
+      
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB')
+        return
+      }
+
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setProfilePicture(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file type (PDF, images)
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please upload a PDF or image file')
+        return
+      }
+      
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size should be less than 10MB')
+        return
+      }
+
+      setProofOfRegistration(file)
+      handleInputChange("proofOfRegistrationUploaded", true)
+    }
+  }
+
+  const handleTranscriptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file type (PDF, images)
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please upload a PDF or image file')
+        return
+      }
+      
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size should be less than 10MB')
+        return
+      }
+
+      setTranscript(file)
+      handleInputChange("transcriptUploaded", true)
+    }
   }
 
   const handleNextStep = () => {
@@ -41,10 +152,118 @@ export default function BecomeTutorPage() {
     setCurrentStep((prev) => prev - 1)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // In a real app, this would submit the form data to the server
-    setCurrentStep(4) // Move to success step
+    
+    // Validate all required fields before submission
+    const requiredFields = {
+      fullName: formData.fullName,
+      institution: formData.institution,
+      qualification: formData.qualification,
+      hourlyRate: formData.hourlyRate,
+      bio: formData.bio,
+    }
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value || value.toString().trim() === '')
+      .map(([key, _]) => key)
+
+    if (missingFields.length > 0) {
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`)
+      return
+    }
+
+    // Validate modules
+    const validModules = Array.isArray(formData.modules) 
+      ? formData.modules.filter(m => m && m.trim() !== '') 
+      : []
+
+    if (validModules.length === 0) {
+      alert('Please enter at least one module code')
+      return
+    }
+
+    // Validate proof of registration
+    if (!proofOfRegistration) {
+      alert('Please upload your proof of registration document')
+      return
+    }
+    
+    try {
+      const token = localStorage.getItem('auth-token')
+      if (!token) {
+        alert('Please log in to submit your tutor application')
+        return
+      }
+
+      // Convert file uploads to base64
+      const convertFileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+      }
+
+      let proofBase64: string | null = null
+      let transcriptBase64: string | null = null
+
+      if (proofOfRegistration) {
+        proofBase64 = await convertFileToBase64(proofOfRegistration)
+      }
+
+      if (transcript) {
+        transcriptBase64 = await convertFileToBase64(transcript)
+      }
+
+      // Prepare the application data
+      const applicationData = {
+        fullName: formData.fullName.trim(),
+        institution: formData.institution,
+        modules: validModules,
+        qualification: formData.qualification.trim(),
+        hourlyRate: formData.hourlyRate,
+        bio: formData.bio.trim(),
+        profilePicture: profilePicture,
+        proofOfRegistration: proofBase64,
+        transcript: transcriptBase64,
+      }
+
+      console.log('Submitting application data:', {
+        ...applicationData,
+        modulesCount: validModules.length,
+        profilePictureLength: profilePicture?.length,
+        proofLength: proofBase64?.length,
+        transcriptLength: transcriptBase64?.length,
+      })
+
+      const response = await fetch('/api/tutors/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(applicationData),
+      })
+
+      const result = await response.json()
+
+      console.log('API Response:', { status: response.status, result })
+
+      if (!response.ok) {
+        console.error('Application submission failed:', result)
+        throw new Error(result.error || 'Failed to submit application')
+      }
+
+      // Move to success step
+      setCurrentStep(4)
+    } catch (error) {
+      console.error('Error submitting tutor application:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit application. Please try again.'
+      console.error('Full error details:', error)
+      alert(errorMessage)
+    }
   }
 
   return (
@@ -57,21 +276,34 @@ export default function BecomeTutorPage() {
           </p>
         </div>
 
-        <div className="mb-8">
-          <Tabs value={`step-${currentStep}`} className="w-full">
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="step-1" disabled>
-                1. Create Account
-              </TabsTrigger>
-              <TabsTrigger value="step-2" disabled>
-                2. Build Profile
-              </TabsTrigger>
-              <TabsTrigger value="step-3" disabled>
-                3. Verification
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        {isLoadingProfile ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="mb-8">
+              <Tabs value={`step-${currentStep}`} className="w-full">
+                <TabsList className="grid grid-cols-3 w-full">
+                  <TabsTrigger value="step-1" disabled>
+                    1. Create Account
+                  </TabsTrigger>
+                  <TabsTrigger value="step-2" disabled>
+                    2. Build Profile
+                  </TabsTrigger>
+                  <TabsTrigger value="step-3" disabled>
+                    3. Verification
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
 
         <Card>
           <CardHeader>
@@ -158,12 +390,39 @@ export default function BecomeTutorPage() {
                 <div className="space-y-2">
                   <Label htmlFor="profile-picture">Profile Picture</Label>
                   <div className="flex items-center gap-4">
-                    <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center">
-                      <User className="h-10 w-10 text-gray-500" />
+                    <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                      {profilePicture ? (
+                        <Image 
+                          src={profilePicture} 
+                          alt="Profile preview" 
+                          width={80} 
+                          height={80}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <User className="h-10 w-10 text-gray-500" />
+                      )}
                     </div>
-                    <Button variant="outline" type="button">
-                      Upload Photo
-                    </Button>
+                    <div>
+                      <input
+                        ref={profilePictureInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePictureChange}
+                        className="hidden"
+                        id="profile-picture-input"
+                      />
+                      <Button 
+                        variant="outline" 
+                        type="button"
+                        onClick={() => profilePictureInputRef.current?.click()}
+                      >
+                        Upload Photo
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Max 5MB, JPG/PNG
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -177,15 +436,11 @@ export default function BecomeTutorPage() {
                       <SelectValue placeholder="Select your institution" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="uct">University of Cape Town</SelectItem>
-                      <SelectItem value="wits">University of the Witwatersrand</SelectItem>
-                      <SelectItem value="up">University of Pretoria</SelectItem>
-                      <SelectItem value="ukzn">University of KwaZulu-Natal</SelectItem>
-                      <SelectItem value="su">Stellenbosch University</SelectItem>
-                      <SelectItem value="ru">Rhodes University</SelectItem>
-                      <SelectItem value="uj">University of Johannesburg</SelectItem>
-                      <SelectItem value="unisa">UNISA</SelectItem>
-                      <SelectItem value="dut">Durban University of Technology</SelectItem>
+                      {INSTITUTION_OPTIONS.map((inst) => (
+                        <SelectItem key={inst.value} value={inst.value}>
+                          {inst.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -253,15 +508,27 @@ export default function BecomeTutorPage() {
                     <p className="text-sm text-muted-foreground mb-2">
                       Upload an official proof of registration/enrolment letter showing your name, institution, and current year/semester
                     </p>
+                    <input
+                      ref={proofInputRef}
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={handleProofUpload}
+                      className="hidden"
+                      id="proof-upload-input"
+                    />
                     <Button
                       variant="outline"
                       type="button"
-                      onClick={() => handleInputChange("proofOfRegistrationUploaded", true)}
+                      onClick={() => proofInputRef.current?.click()}
                     >
-                      {formData.proofOfRegistrationUploaded ? "Uploaded ✓" : "Upload Document"}
+                      {formData.proofOfRegistrationUploaded ? (
+                        <>Uploaded ✓ - {proofOfRegistration?.name}</>
+                      ) : (
+                        "Upload Document"
+                      )}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Required for verification</p>
+                  <p className="text-xs text-muted-foreground">Required for verification (PDF or image, max 10MB)</p>
                 </div>
 
                 <div className="space-y-2">
@@ -271,15 +538,27 @@ export default function BecomeTutorPage() {
                     <p className="text-sm text-muted-foreground mb-2">
                       Upload your academic transcript to boost your credibility
                     </p>
+                    <input
+                      ref={transcriptInputRef}
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={handleTranscriptUpload}
+                      className="hidden"
+                      id="transcript-upload-input"
+                    />
                     <Button
                       variant="outline"
                       type="button"
-                      onClick={() => handleInputChange("transcriptUploaded", true)}
+                      onClick={() => transcriptInputRef.current?.click()}
                     >
-                      {formData.transcriptUploaded ? "Uploaded ✓" : "Upload Document"}
+                      {formData.transcriptUploaded ? (
+                        <>Uploaded ✓ - {transcript?.name}</>
+                      ) : (
+                        "Upload Document"
+                      )}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Optional but recommended</p>
+                  <p className="text-xs text-muted-foreground">Optional but recommended (PDF or image, max 10MB)</p>
                 </div>
 
                 <div className="bg-blue-50 p-4 rounded-lg">
@@ -358,6 +637,8 @@ export default function BecomeTutorPage() {
               </li>
             </ul>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

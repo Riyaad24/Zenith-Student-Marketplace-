@@ -1,32 +1,34 @@
 import { NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase"
 import { cookies } from "next/headers"
+import jwt from 'jsonwebtoken'
+import { prisma } from '@/lib/prisma'
 
-async function getCurrentUser() {
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+
+interface JWTPayload {
+  userId: string
+  email: string
+}
+
+async function getAuthenticatedUser(request: NextRequest) {
   try {
     const cookieStore = await cookies()
-    const authCookie = cookieStore.get('sb-access-token') || cookieStore.get('sb-bjqwjqnqqttpbqafixdy-auth-token')
-    
-    if (!authCookie?.value) {
+    const token = cookieStore.get('auth-token')?.value
+
+    if (!token) {
       return null
     }
 
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(authCookie.value)
-    
-    if (error || !user) {
-      return null
-    }
-
-    return user
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    return decoded
   } catch (error) {
-    console.error("Error getting current user:", error)
     return null
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const user = await getAuthenticatedUser(request)
 
     if (!user) {
       return NextResponse.json(
@@ -39,54 +41,106 @@ export async function GET(request: NextRequest) {
     const conversationWith = searchParams.get("conversationWith")
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "50")
-    const offset = (page - 1) * limit
+    const skip = (page - 1) * limit
 
-    let query = supabaseAdmin
-      .from("messages")
-      .select(`
-        *,
-        sender:profiles!messages_sender_id_fkey (
-          id,
-          first_name, 
-          last_name, 
-          avatar_url,
-          university
-        ),
-        receiver:profiles!messages_receiver_id_fkey (
-          id,
-          first_name, 
-          last_name, 
-          avatar_url,
-          university
-        )
-      `)
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+    // Build where clause
+    const where: any = {
+      OR: [
+        { senderId: user.userId },
+        { receiverId: user.userId }
+      ]
+    }
 
+    // If conversation with specific user, filter for that conversation
     if (conversationWith) {
-      query = query.or(
-        `and(sender_id.eq.${user.id},receiver_id.eq.${conversationWith}),and(sender_id.eq.${conversationWith},receiver_id.eq.${user.id})`
-      )
+      where.OR = [
+        {
+          AND: [
+            { senderId: user.userId },
+            { receiverId: conversationWith }
+          ]
+        },
+        {
+          AND: [
+            { senderId: conversationWith },
+            { receiverId: user.userId }
+          ]
+        }
+      ]
     }
 
-    const { data: messages, error } = await query
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1)
+    // Fetch messages
+    const messages = await prisma.message.findMany({
+      where,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            university: true
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            university: true
+          }
+        },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            image: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      skip,
+      take: limit
+    })
 
-    if (error) {
-      console.error("Error fetching messages:", error)
-      return NextResponse.json(
-        { success: false, message: "Failed to fetch messages" },
-        { status: 500 }
-      )
-    }
+    // Format messages
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      content: msg.content,
+      read: msg.read,
+      product_id: msg.productId,
+      created_at: msg.createdAt.toISOString(),
+      updated_at: msg.updatedAt.toISOString(),
+      sender_id: msg.senderId,
+      receiver_id: msg.receiverId,
+      sender: {
+        id: msg.sender.id,
+        first_name: msg.sender.firstName || '',
+        last_name: msg.sender.lastName || '',
+        avatar_url: msg.sender.avatar,
+        university: msg.sender.university
+      },
+      receiver: {
+        id: msg.receiver.id,
+        first_name: msg.receiver.firstName || '',
+        last_name: msg.receiver.lastName || '',
+        avatar_url: msg.receiver.avatar,
+        university: msg.receiver.university
+      },
+      product: msg.product
+    }))
 
     return NextResponse.json({
       success: true,
-      data: messages || [],
+      data: formattedMessages,
       pagination: {
         page,
         limit,
-        total: messages?.length || 0
+        total: formattedMessages.length
       }
     })
 
@@ -101,7 +155,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const user = await getAuthenticatedUser(request)
 
     if (!user) {
       return NextResponse.json(
@@ -120,47 +174,75 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const messageData = {
-      sender_id: user.id,
-      receiver_id: receiverId,
-      content: content.trim(),
-      product_id: productId || null,
-      read: false
-    }
+    // Create the message
+    const newMessage = await prisma.message.create({
+      data: {
+        senderId: user.userId,
+        receiverId: receiverId,
+        content: content.trim(),
+        productId: productId || null,
+        read: false
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            university: true
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            university: true
+          }
+        },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            image: true
+          }
+        }
+      }
+    })
 
-    const { data: newMessage, error } = await supabaseAdmin
-      .from("messages")
-      .insert(messageData)
-      .select(`
-        *,
-        sender:profiles!messages_sender_id_fkey (
-          id,
-          first_name, 
-          last_name, 
-          avatar_url,
-          university
-        ),
-        receiver:profiles!messages_receiver_id_fkey (
-          id,
-          first_name, 
-          last_name, 
-          avatar_url,
-          university
-        )
-      `)
-      .single()
-
-    if (error) {
-      console.error("Error sending message:", error)
-      return NextResponse.json(
-        { success: false, message: "Failed to send message" },
-        { status: 500 }
-      )
+    // Format the message
+    const formattedMessage = {
+      id: newMessage.id,
+      content: newMessage.content,
+      read: newMessage.read,
+      product_id: newMessage.productId,
+      created_at: newMessage.createdAt.toISOString(),
+      updated_at: newMessage.updatedAt.toISOString(),
+      sender_id: newMessage.senderId,
+      receiver_id: newMessage.receiverId,
+      sender: {
+        id: newMessage.sender.id,
+        first_name: newMessage.sender.firstName || '',
+        last_name: newMessage.sender.lastName || '',
+        avatar_url: newMessage.sender.avatar,
+        university: newMessage.sender.university
+      },
+      receiver: {
+        id: newMessage.receiver.id,
+        first_name: newMessage.receiver.firstName || '',
+        last_name: newMessage.receiver.lastName || '',
+        avatar_url: newMessage.receiver.avatar,
+        university: newMessage.receiver.university
+      },
+      product: newMessage.product
     }
 
     return NextResponse.json({
       success: true,
-      data: newMessage,
+      data: formattedMessage,
       message: "Message sent successfully"
     })
 

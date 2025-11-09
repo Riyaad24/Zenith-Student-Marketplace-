@@ -16,6 +16,11 @@ export async function auditLog(
   ip: string | null = null
 ): Promise<void> {
   try {
+    // Skip if no valid adminId (e.g., allowlist users or null)
+    if (!adminId || adminId === 'allowlist') {
+      return
+    }
+
     await prisma.adminAuditLog.create({
       data: {
         adminId,

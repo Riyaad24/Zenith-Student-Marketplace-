@@ -35,6 +35,13 @@ interface SigninLog {
   signInAt: string
 }
 
+interface AdminInfo {
+  firstName: string | null
+  lastName: string | null
+  email: string
+  studentNumber: string | null
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -43,6 +50,7 @@ export default function AdminDashboard() {
   const [showSigninLogbook, setShowSigninLogbook] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null)
 
   useEffect(() => {
     fetchDashboardData()
@@ -56,8 +64,8 @@ export default function AdminDashboard() {
         return
       }
 
-      // Fetch dashboard stats and recent activity
-      const [statsRes, actionsRes, signinRes] = await Promise.all([
+      // Fetch dashboard stats, recent activity, and admin info
+      const [statsRes, actionsRes, signinRes, adminRes] = await Promise.all([
         fetch('/api/admin/dashboard/stats', {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -66,16 +74,25 @@ export default function AdminDashboard() {
         }),
         fetch('/api/admin/audit/signins?limit=10', {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch('/api/admin/me', {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ])
 
       if (!statsRes.ok || !actionsRes.ok || !signinRes.ok) {
+        if (statsRes.status === 403 || statsRes.status === 401) {
+          setError('Session expired. Please log in again.')
+          setTimeout(() => router.push('/login'), 2000)
+          return
+        }
         throw new Error('Failed to fetch dashboard data')
       }
 
       const statsData = await statsRes.json()
       const actionsData = await actionsRes.json()
       const signinData = await signinRes.json()
+      const adminData = adminRes.ok ? await adminRes.json() : null
 
       setStats(statsData.stats)
       
@@ -91,9 +108,15 @@ export default function AdminDashboard() {
       })))
       
       setSigninLogs(signinData.logs)
+      
+      if (adminData) {
+        setAdminInfo(adminData.admin)
+      }
+      
+      setError(null)
     } catch (error) {
       console.error('Dashboard error:', error)
-      setError('Failed to load dashboard data')
+      setError('Unable to load dashboard data. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -113,13 +136,19 @@ export default function AdminDashboard() {
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600">{error}</p>
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-600 text-2xl">⚠</span>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">{error}</h2>
+          <p className="text-gray-500 mb-6">
+            We encountered an issue loading the dashboard. Please check your connection and try again.
+          </p>
           <button
             onClick={fetchDashboardData}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Retry
+            Try Again
           </button>
         </div>
       </div>
@@ -132,9 +161,27 @@ export default function AdminDashboard() {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600">Zenith Student Marketplace</p>
+            <div className="flex items-center space-x-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+                <p className="text-gray-600">Zenith Student Marketplace</p>
+              </div>
+              {adminInfo && (
+                <div className="flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold uppercase tracking-wide opacity-90">Administrator</span>
+                    <span className="font-bold text-sm">
+                      {adminInfo.firstName} {adminInfo.lastName}
+                    </span>
+                  </div>
+                  <span className="ml-3 bg-white/20 px-2 py-1 rounded text-xs font-mono">
+                    #{adminInfo.studentNumber}
+                  </span>
+                </div>
+              )}
             </div>
             <nav className="flex space-x-4">
               <Link
@@ -142,6 +189,29 @@ export default function AdminDashboard() {
                 className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-md"
               >
                 Manage Users
+              </Link>
+              <Link
+                href="/admin/tutors"
+                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-md"
+              >
+                Tutor Verification
+              </Link>
+              <Link
+                href="/admin/reports"
+                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-md"
+              >
+                Reports
+              </Link>
+              <Link
+                href="/admin/notifications"
+                className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-md relative"
+              >
+                Notifications
+                {stats && (stats.totalUsers > 0) && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    !
+                  </span>
+                )}
               </Link>
               <Link
                 href="/admin/logs"

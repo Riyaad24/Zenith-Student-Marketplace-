@@ -1,22 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
-import { jwtSecret } from '@/lib/config'
 import { prisma } from '@/lib/prisma'
+
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function GET() {
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('auth-token')?.value
 
+    console.log('Profile API: Token exists?', !!token)
+
     if (!token) {
+      console.log('Profile API: No auth token found')
       return NextResponse.json({ error: 'No auth token' }, { status: 401 })
     }
 
     // Verify JWT token
-    const decoded = jwt.verify(token, jwtSecret) as any
+    let decoded
+    try {
+      decoded = jwt.verify(token, jwtSecret) as any
+      console.log('Profile API: Token verified, userId:', decoded.userId)
+    } catch (jwtError) {
+      console.error('Profile API: JWT verification failed:', jwtError)
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
     
     // Get user with profile data
+    console.log('Profile API: Fetching user from database...')
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -39,6 +51,12 @@ export async function GET() {
         adminVerified: true,
         verificationNotes: true,
         verifiedAt: true,
+        admin: {
+          select: {
+            id: true,
+            isActive: true
+          }
+        },
         products: {
           select: {
             id: true,
@@ -50,24 +68,34 @@ export async function GET() {
             id: true,
             status: true
           }
+        },
+        security: {
+          select: {
+            emailVerified: true
+          }
         }
       }
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+      console.log('Profile API: User not found in database for userId:', decoded.userId)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Calculate stats
-    const activeListings = user.products.filter(p => p.status === 'active').length
-    const totalListings = user.products.length
-    const completedOrders = user.orders.filter(o => o.status === 'completed').length
+    console.log('Profile API: User found:', user.email)
+
+    // Calculate stats - with safe defaults
+    const activeListings = user.products?.filter(p => p.status === 'active').length || 0
+    const totalListings = user.products?.length || 0
+    const completedOrders = user.orders?.filter(o => o.status === 'completed').length || 0
 
     // Format joined date
     const joinedDate = new Date(user.createdAt).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long'
     })
+
+    console.log('Profile API: Returning success response')
 
     return NextResponse.json({
       user: {
@@ -83,6 +111,7 @@ export async function GET() {
         bio: user.bio,
         verified: user.verified,
         joinedDate,
+        isAdmin: !!(user.admin?.isActive), // Check if user is an active admin
         // Verification data
         profilePicture: user.profilePicture,
         studentCardImage: user.studentCardImage,
@@ -91,6 +120,9 @@ export async function GET() {
         adminVerified: user.adminVerified,
         verificationNotes: user.verificationNotes,
         verifiedAt: user.verifiedAt,
+        security: {
+          emailVerified: user.security?.emailVerified || false
+        },
         stats: {
           listings: activeListings,
           totalListings,

@@ -1,11 +1,27 @@
-'use client'
+"use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { useAuth } from '@/components/auth-provider'
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 export default function AboutPage() {
-  const { user, loading } = useAuth()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/profile')
+        setIsLoggedIn(response.ok)
+      } catch (error) {
+        setIsLoggedIn(false)
+      } finally {
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
   return (
     <div className="container px-4 md:px-6 py-8 md:py-12">
       <div className="max-w-3xl mx-auto">
@@ -69,17 +85,18 @@ export default function AboutPage() {
             <p className="text-center mb-6">
               Be part of the movement to transform student resource sharing across South Africa.
             </p>
-            {!loading && !user && (
+            {!loading && (
               <div className="flex justify-center">
-                <a href="/register" className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-md">
-                  Sign Up Today
-                </a>
+                {!isLoggedIn ? (
+                  <a href="/register" className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-md">
+                    Sign Up Today
+                  </a>
+                ) : (
+                  <a href="/browse" className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-2 rounded-md">
+                    Browse Products
+                  </a>
+                )}
               </div>
-            )}
-            {!loading && user && (
-              <p className="text-center text-muted-foreground">
-                Welcome back! You're already part of our community. 🎉
-              </p>
             )}
           </CardContent>
         </Card>

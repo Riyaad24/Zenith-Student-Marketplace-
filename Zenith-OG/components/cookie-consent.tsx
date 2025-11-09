@@ -14,6 +14,13 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 
+// Declare gtag for TypeScript
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void
+  }
+}
+
 interface CookiePreferences {
   necessary: boolean
   functional: boolean
@@ -49,6 +56,18 @@ export default function CookieConsent() {
       timestamp: new Date().toISOString(),
     }
     localStorage.setItem('cookie-consent', JSON.stringify(allAccepted))
+    
+    // Enable analytics if accepted
+    if (typeof window !== 'undefined') {
+      const gtag = (window as any).gtag
+      if (gtag) {
+        gtag('consent', 'update', {
+          'analytics_storage': 'granted',
+          'ad_storage': 'granted'
+        })
+      }
+    }
+    
     setShowBanner(false)
     setShowSettings(false)
   }
@@ -62,6 +81,18 @@ export default function CookieConsent() {
       timestamp: new Date().toISOString(),
     }
     localStorage.setItem('cookie-consent', JSON.stringify(onlyNecessary))
+    
+    // Deny analytics if declined
+    if (typeof window !== 'undefined') {
+      const gtag = (window as any).gtag
+      if (gtag) {
+        gtag('consent', 'update', {
+          'analytics_storage': 'denied',
+          'ad_storage': 'denied'
+        })
+      }
+    }
+    
     setPreferences(onlyNecessary)
     setShowBanner(false)
     setShowSettings(false)
@@ -73,6 +104,18 @@ export default function CookieConsent() {
       timestamp: new Date().toISOString(),
     }
     localStorage.setItem('cookie-consent', JSON.stringify(savedPreferences))
+    
+    // Update consent based on preferences
+    if (typeof window !== 'undefined') {
+      const gtag = (window as any).gtag
+      if (gtag) {
+        gtag('consent', 'update', {
+          'analytics_storage': preferences.analytics ? 'granted' : 'denied',
+          'ad_storage': preferences.marketing ? 'granted' : 'denied'
+        })
+      }
+    }
+    
     setShowBanner(false)
     setShowSettings(false)
   }

@@ -11,28 +11,28 @@ const categories = [
     title: "Textbooks",
     description: "New and used textbooks for all courses",
     icon: BookOpen,
-    image: "/placeholder.svg?height=300&width=400&text=Textbooks",
+    image: "/textbook-illus.png",
   },
   {
     id: "electronics",
     title: "Electronics",
     description: "Laptops, calculators, and other devices",
     icon: Laptop,
-    image: "/placeholder.svg?height=300&width=400&text=Electronics",
+    image: "/electronics-illus.png",
   },
   {
     id: "tutoring",
     title: "Tutoring",
     description: "Find tutors or offer your services",
     icon: MessageSquare,
-    image: "/placeholder.svg?height=300&width=400&text=Tutoring",
+    image: "/tutoring-illus.png",
   },
   {
     id: "notes",
     title: "Notes & Study Guides",
     description: "Class notes, study guides, and past papers",
     icon: Notes,
-    image: "/placeholder.svg?height=300&width=400&text=Notes",
+    image: "/notes-illus.png",
   },
 ]
 

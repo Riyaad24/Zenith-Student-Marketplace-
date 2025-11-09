@@ -28,8 +28,8 @@ export async function adminAuth(request: NextRequest): Promise<AdminAuthResult> 
       return { isAuthorized: false, error: 'No authentication token provided' }
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as any
+    // Verify JWT token (use same secret as login/register routes)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any
     
     if (!decoded.userId || !decoded.email) {
       return { isAuthorized: false, error: 'Invalid token payload' }

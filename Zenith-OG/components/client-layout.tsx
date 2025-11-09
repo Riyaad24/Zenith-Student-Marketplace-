@@ -6,6 +6,7 @@ import { CartProvider } from './cart-provider'
 import { WishlistProvider } from './wishlist-provider'
 import { ToastProvider } from './ui/toast'
 import SplashScreen from './splash-screen-video'
+import CookieConsent from './cookie-consent'
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -56,6 +57,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
             >
               {children}
             </div>
+            <CookieConsent />
           </ToastProvider>
         </WishlistProvider>
       </CartProvider>

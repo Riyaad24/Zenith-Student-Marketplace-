@@ -21,11 +21,21 @@ interface UploadedImage {
   type: string
 }
 
+interface UploadedPDF {
+  filename: string
+  url: string
+  size: number
+  type: string
+  originalName: string
+}
+
 export default function SellPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
   const [images, setImages] = useState<UploadedImage[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [pdfFile, setPdfFile] = useState<UploadedPDF | null>(null)
+  const [uploadingPdf, setUploadingPdf] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [contactPreferences, setContactPreferences] = useState({
     zenithMessages: true,
@@ -135,6 +145,62 @@ export default function SellPage() {
     }
   }
 
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+
+    const file = e.target.files[0]
+    
+    setUploadingPdf(true)
+    setUploadError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('pdf', file)
+
+      const response = await fetch('/api/products/pdf', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to upload PDF')
+      }
+
+      setPdfFile(result.pdf)
+      
+      // Clear the input value
+      if (e.target) {
+        e.target.value = ''
+      }
+
+    } catch (error) {
+      console.error('PDF upload error:', error)
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload PDF')
+    } finally {
+      setUploadingPdf(false)
+    }
+  }
+
+  const removePdf = async () => {
+    if (!pdfFile) return
+    
+    try {
+      // Delete from server
+      await fetch(`/api/products/pdf?filename=${pdfFile.filename}`, {
+        method: 'DELETE',
+      })
+      
+      // Remove from local state
+      setPdfFile(null)
+    } catch (error) {
+      console.error('Error deleting PDF:', error)
+      // Still remove from UI even if server deletion fails
+      setPdfFile(null)
+    }
+  }
+
   const handleContactPreferenceChange = (preference: keyof typeof contactPreferences) => {
     setContactPreferences((prev) => ({
       ...prev,
@@ -150,6 +216,8 @@ export default function SellPage() {
   }
 
   const handleSubmit = async () => {
+    console.log('🚀 List Item button clicked')
+    
     if (!termsAgreed) {
       setUploadError('Please agree to the terms and conditions')
       return
@@ -170,6 +238,9 @@ export default function SellPage() {
       return
     }
 
+    console.log('✅ All validations passed, creating product...')
+    console.log('📸 Images array:', images)
+    console.log('📄 PDF file:', pdfFile)
     setIsSubmitting(true)
     setUploadError(null)
 
@@ -177,10 +248,13 @@ export default function SellPage() {
       const productData = {
         ...formData,
         images: images.map(img => img.url),
+        pdfFile: pdfFile?.url || null,
         contactPreferences,
         price: parseFloat(formData.price),
         quantity: parseInt(formData.quantity)
       }
+
+      console.log('📦 Product data to send:', JSON.stringify(productData, null, 2))
 
       const response = await fetch('/api/products', {
         method: 'POST',
@@ -191,17 +265,30 @@ export default function SellPage() {
       })
 
       const result = await response.json()
+      console.log('📨 API response:', result)
+      console.log('📨 Response status:', response.status)
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create product listing')
+        console.error('❌ API Error:', result)
+        const errorMessage = result.details 
+          ? `${result.error}: ${result.details}` 
+          : (result.error || 'Failed to create product listing')
+        throw new Error(errorMessage)
       }
 
-      // Redirect to the product page or success page
-      router.push(`/product/${result.id}`)
+      // Show success message with the admin review notification
+      alert('✅ Listing Submitted Successfully!\n\nYour product has been submitted for review. An admin will review it before it goes live on Zenith. You\'ll receive a notification once it\'s approved!')
+
+      // Redirect to the account page to see listings
+      router.push('/account?tab=listings')
       
     } catch (error) {
-      console.error('Submit error:', error)
-      setUploadError(error instanceof Error ? error.message : 'Failed to create listing')
+      console.error('❌ Submit error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create listing'
+      setUploadError(errorMessage)
+      
+      // Show alert with detailed error
+      alert(`❌ Failed to create listing\n\nError: ${errorMessage}\n\nPlease check the browser console (F12) for more details.`)
     } finally {
       setIsSubmitting(false)
     }
@@ -430,6 +517,81 @@ export default function SellPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* PDF Upload - Only for Textbooks and Study Notes/Guides */}
+          {(formData.category === 'textbooks' || formData.category === 'notes') && (
+            <Card>
+              <CardHeader>
+                <CardTitle>PDF File (Optional)</CardTitle>
+                <CardDescription>
+                  {formData.category === 'textbooks' 
+                    ? 'Upload a PDF version of the textbook or sample chapters'
+                    : 'Upload your study notes or study guide as a PDF'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pdfFile ? (
+                  <div className="border rounded-md p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-red-100 p-2 rounded">
+                          <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="font-medium">{pdfFile.originalName}</p>
+                          <p className="text-sm text-gray-500">
+                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={removePdf}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={handlePdfUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={uploadingPdf}
+                    />
+                    <div className="border border-dashed rounded-md p-8 flex flex-col items-center justify-center hover:bg-gray-50 transition-colors">
+                      {uploadingPdf ? (
+                        <>
+                          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-3" />
+                          <span className="text-sm text-muted-foreground">Uploading PDF...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-12 w-12 text-muted-foreground mb-3" />
+                          <span className="text-sm font-medium mb-1">Click to upload PDF</span>
+                          <span className="text-xs text-muted-foreground">Maximum file size: 50MB</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-4 text-sm text-gray-600">
+                  <p>• Maximum file size: 50MB</p>
+                  <p>• Format: PDF only</p>
+                  <p>• {formData.category === 'textbooks' 
+                      ? 'Upload the full textbook or sample chapters for buyers to preview'
+                      : 'Upload your complete notes/study guide for buyers to access after purchase'}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Contact Preferences */}
           <Card>

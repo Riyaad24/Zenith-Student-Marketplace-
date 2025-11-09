@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/lib/prisma'
 
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
+
 export async function GET() {
   try {
     const cookieStore = await cookies()
@@ -18,7 +20,7 @@ export async function GET() {
     }
 
     // Verify JWT token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as any
+    const decoded = jwt.verify(token, jwtSecret) as any
     console.log('✅ API /auth/me - Token decoded for user:', decoded.userId)
     
     // Get user from database

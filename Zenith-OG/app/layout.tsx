@@ -3,7 +3,6 @@ import "./globals.css"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import ClientLayout from "@/components/client-layout"
-import CookieConsent from "@/components/cookie-consent"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -36,7 +35,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Header />
           <main id="main-content">{children}</main>
           <Footer />
-          <CookieConsent />
         </ClientLayout>
       </body>
     </html>

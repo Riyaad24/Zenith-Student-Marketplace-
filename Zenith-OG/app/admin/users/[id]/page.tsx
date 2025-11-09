@@ -71,10 +71,19 @@ export default function UserDetailPage() {
   const [showDeleteProductModal, setShowDeleteProductModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [deletingProduct, setDeletingProduct] = useState(false)
-  const [showDocuments, setShowDocuments] = useState({
-    studentCard: false,
-    idDocument: false
+  const [documentModal, setDocumentModal] = useState<{
+    isOpen: boolean
+    url: string | null
+    title: string
+    type: 'image' | 'pdf' | null
+  }>({
+    isOpen: false,
+    url: null,
+    title: '',
+    type: null
   })
+  const [verifying, setVerifying] = useState(false)
+  const [sendingEmailVerification, setSendingEmailVerification] = useState(false)
 
   useEffect(() => {
     if (userId) {
@@ -151,6 +160,95 @@ export default function UserDetailPage() {
       alert('Failed to delete product')
     } finally {
       setDeletingProduct(false)
+    }
+  }
+
+  const openDocumentModal = (url: string, title: string) => {
+    const isPdf = url.toLowerCase().endsWith('.pdf')
+    setDocumentModal({
+      isOpen: true,
+      url,
+      title,
+      type: isPdf ? 'pdf' : 'image'
+    })
+  }
+
+  const closeDocumentModal = () => {
+    setDocumentModal({
+      isOpen: false,
+      url: null,
+      title: '',
+      type: null
+    })
+  }
+
+  const handleVerifyUser = async () => {
+    if (!confirm('Are you sure you want to verify this user? This will mark their account as fully verified.')) {
+      return
+    }
+
+    try {
+      setVerifying(true)
+      const token = localStorage.getItem('auth-token')
+      
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...user,
+          adminVerified: true,
+          verificationNotes: user?.verificationNotes || 'Documents verified by admin'
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        alert(err?.error || 'Failed to verify user')
+        return
+      }
+
+      // Refresh user data
+      await fetchUserDetail()
+      alert('User verified successfully! Notification sent to user.')
+    } catch (error) {
+      console.error('Verify user error:', error)
+      alert('Failed to verify user')
+    } finally {
+      setVerifying(false)
+    }
+  }
+
+  const handleSendEmailVerification = async () => {
+    if (!confirm('Send email verification link to user?')) {
+      return
+    }
+
+    try {
+      setSendingEmailVerification(true)
+      const token = localStorage.getItem('auth-token')
+      
+      const response = await fetch(`/api/admin/users/${userId}/send-verification-email`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        alert(err?.error || 'Failed to send verification email')
+        return
+      }
+
+      alert('Verification email sent successfully!')
+    } catch (error) {
+      console.error('Send verification email error:', error)
+      alert('Failed to send verification email')
+    } finally {
+      setSendingEmailVerification(false)
     }
   }
 
@@ -316,6 +414,30 @@ export default function UserDetailPage() {
                       </p>
                     </div>
                   )}
+                  {!user.security.emailVerified && (
+                    <div className="pt-3 border-t">
+                      <button
+                        onClick={handleSendEmailVerification}
+                        disabled={sendingEmailVerification}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {sendingEmailVerification ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Verification Email
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-4 text-gray-500">
@@ -377,34 +499,29 @@ export default function UserDetailPage() {
                 <div className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-gray-700">Student Card</h4>
-                    {user.studentCardImage && (
-                      <button
-                        onClick={() => setShowDocuments(prev => ({ ...prev, studentCard: !prev.studentCard }))}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        {showDocuments.studentCard ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    )}
                   </div>
                   {user.studentCardImage ? (
-                    showDocuments.studentCard ? (
-                      <div className="relative w-full h-48">
-                        <Image
-                          src={user.studentCardImage}
-                          alt="Student Card"
-                          fill
-                          className="object-contain rounded"
-                        />
+                    <div 
+                      onClick={() => openDocumentModal(user.studentCardImage!, 'Student Card')}
+                      className="relative w-full h-48 cursor-pointer hover:opacity-90 transition-opacity group"
+                    >
+                      <Image
+                        src={user.studentCardImage}
+                        alt="Student Card"
+                        fill
+                        className="object-contain rounded"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded flex items-center justify-center">
+                        <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                    ) : (
-                      <div className="bg-gray-100 h-48 rounded flex items-center justify-center">
-                        <p className="text-sm text-gray-500">Click eye icon to view</p>
-                      </div>
-                    )
+                    </div>
                   ) : (
                     <div className="bg-gray-50 h-48 rounded flex items-center justify-center">
                       <p className="text-sm text-gray-400">Not uploaded</p>
                     </div>
+                  )}
+                  {user.studentCardImage && (
+                    <p className="text-xs text-gray-500 text-center mt-2">Click to view full size</p>
                   )}
                 </div>
 
@@ -412,36 +529,72 @@ export default function UserDetailPage() {
                 <div className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-gray-700">ID Document</h4>
-                    {user.idDocumentImage && (
-                      <button
-                        onClick={() => setShowDocuments(prev => ({ ...prev, idDocument: !prev.idDocument }))}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        {showDocuments.idDocument ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    )}
                   </div>
                   {user.idDocumentImage ? (
-                    showDocuments.idDocument ? (
-                      <div className="relative w-full h-48">
-                        <Image
-                          src={user.idDocumentImage}
-                          alt="ID Document"
-                          fill
-                          className="object-contain rounded"
-                        />
+                    <div 
+                      onClick={() => openDocumentModal(user.idDocumentImage!, 'ID Document')}
+                      className="relative w-full h-48 cursor-pointer hover:opacity-90 transition-opacity group"
+                    >
+                      <Image
+                        src={user.idDocumentImage}
+                        alt="ID Document"
+                        fill
+                        className="object-contain rounded"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded flex items-center justify-center">
+                        <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                    ) : (
-                      <div className="bg-gray-100 h-48 rounded flex items-center justify-center">
-                        <p className="text-sm text-gray-500">Click eye icon to view</p>
-                      </div>
-                    )
+                    </div>
                   ) : (
                     <div className="bg-gray-50 h-48 rounded flex items-center justify-center">
                       <p className="text-sm text-gray-400">Not uploaded</p>
                     </div>
                   )}
+                  {user.idDocumentImage && (
+                    <p className="text-xs text-gray-500 text-center mt-2">Click to view full size</p>
+                  )}
                 </div>
+              </div>
+
+              {/* Verification Actions */}
+              <div className="mt-6 pt-6 border-t space-y-3">
+                {!user.adminVerified && user.documentsUploaded && (
+                  <button
+                    onClick={handleVerifyUser}
+                    disabled={verifying}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {verifying ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Verify User Documents
+                      </>
+                    )}
+                  </button>
+                )}
+                {user.adminVerified && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                      <div>
+                        <p className="text-sm font-medium text-green-800">User Verified</p>
+                        {user.verifiedAt && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Verified on {new Date(user.verifiedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -614,6 +767,49 @@ export default function UserDetailPage() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {documentModal.isOpen && documentModal.url && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4"
+          onClick={closeDocumentModal}
+        >
+          <div 
+            className="relative max-w-7xl w-full max-h-[90vh] bg-white rounded-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gray-900 text-white px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-medium">{documentModal.title}</h3>
+              <button
+                onClick={closeDocumentModal}
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="bg-gray-50 p-4 overflow-auto" style={{ maxHeight: 'calc(90vh - 64px)' }}>
+              {documentModal.type === 'pdf' ? (
+                <iframe
+                  src={documentModal.url}
+                  className="w-full h-[80vh] border-0"
+                  title={documentModal.title}
+                />
+              ) : (
+                <div className="flex items-center justify-center">
+                  <img
+                    src={documentModal.url}
+                    alt={documentModal.title}
+                    className="max-w-full max-h-[80vh] object-contain"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

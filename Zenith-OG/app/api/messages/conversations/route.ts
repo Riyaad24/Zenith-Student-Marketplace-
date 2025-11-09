@@ -1,32 +1,34 @@
 import { NextRequest, NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase"
 import { cookies } from "next/headers"
+import jwt from 'jsonwebtoken'
+import { prisma } from '@/lib/prisma'
 
-async function getCurrentUser() {
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+
+interface JWTPayload {
+  userId: string
+  email: string
+}
+
+async function getAuthenticatedUser(request: NextRequest) {
   try {
     const cookieStore = await cookies()
-    const authCookie = cookieStore.get('sb-access-token') || cookieStore.get('sb-bjqwjqnqqttpbqafixdy-auth-token')
-    
-    if (!authCookie?.value) {
+    const token = cookieStore.get('auth-token')?.value
+
+    if (!token) {
       return null
     }
 
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(authCookie.value)
-    
-    if (error || !user) {
-      return null
-    }
-
-    return user
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    return decoded
   } catch (error) {
-    console.error("Error getting current user:", error)
     return null
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const user = await getAuthenticatedUser(request)
 
     if (!user) {
       return NextResponse.json(
@@ -36,64 +38,128 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all messages where the user is either sender or receiver
-    const { data: allMessages, error } = await supabaseAdmin
-      .from("messages")
-      .select(`
-        *,
-        sender:profiles!messages_sender_id_fkey (
-          id,
-          first_name, 
-          last_name, 
-          avatar_url,
-          university
-        ),
-        receiver:profiles!messages_receiver_id_fkey (
-          id,
-          first_name, 
-          last_name, 
-          avatar_url,
-          university
-        )
-      `)
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Error fetching conversations:", error)
-      return NextResponse.json(
-        { success: false, message: "Failed to fetch conversations" },
-        { status: 500 }
-      )
-    }
+    const allMessages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { senderId: user.userId },
+          { receiverId: user.userId }
+        ]
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            university: true
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+            university: true
+          }
+        },
+        product: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            image: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
 
     // Group messages by conversation
     const conversationsMap = new Map()
 
-    allMessages?.forEach((message) => {
-      const otherUserId = message.sender_id === user.id ? message.receiver_id : message.sender_id
-      const otherUser = message.sender_id === user.id ? message.receiver : message.sender
+    allMessages.forEach((message) => {
+      const otherUserId = message.senderId === user.userId ? message.receiverId : message.senderId
+      const otherUser = message.senderId === user.userId ? message.receiver : message.sender
       
       if (!conversationsMap.has(otherUserId)) {
         conversationsMap.set(otherUserId, {
           id: otherUserId,
-          user: otherUser,
-          lastMessage: message,
+          user: {
+            id: otherUser.id,
+            first_name: otherUser.firstName || '',
+            last_name: otherUser.lastName || '',
+            avatar_url: otherUser.avatar,
+            university: otherUser.university
+          },
+          lastMessage: {
+            id: message.id,
+            content: message.content,
+            read: message.read,
+            product_id: message.productId,
+            created_at: message.createdAt.toISOString(),
+            updated_at: message.updatedAt.toISOString(),
+            sender_id: message.senderId,
+            receiver_id: message.receiverId,
+            sender: {
+              id: message.sender.id,
+              first_name: message.sender.firstName || '',
+              last_name: message.sender.lastName || '',
+              avatar_url: message.sender.avatar,
+              university: message.sender.university
+            },
+            receiver: {
+              id: message.receiver.id,
+              first_name: message.receiver.firstName || '',
+              last_name: message.receiver.lastName || '',
+              avatar_url: message.receiver.avatar,
+              university: message.receiver.university
+            }
+          },
           unreadCount: 0,
           messages: []
         })
       }
       
       const conversation = conversationsMap.get(otherUserId)
-      conversation.messages.push(message)
       
       // Count unread messages (messages sent to current user that are unread)
-      if (message.receiver_id === user.id && !message.read) {
+      if (message.receiverId === user.userId && !message.read) {
         conversation.unreadCount++
       }
       
       // Update last message if this one is more recent
-      if (new Date(message.created_at) > new Date(conversation.lastMessage.created_at)) {
-        conversation.lastMessage = message
+      const currentLastMessageTime = new Date(conversation.lastMessage.created_at).getTime()
+      const messageTime = new Date(message.createdAt).getTime()
+      
+      if (messageTime > currentLastMessageTime) {
+        conversation.lastMessage = {
+          id: message.id,
+          content: message.content,
+          read: message.read,
+          product_id: message.productId,
+          created_at: message.createdAt.toISOString(),
+          updated_at: message.updatedAt.toISOString(),
+          sender_id: message.senderId,
+          receiver_id: message.receiverId,
+          sender: {
+            id: message.sender.id,
+            first_name: message.sender.firstName || '',
+            last_name: message.sender.lastName || '',
+            avatar_url: message.sender.avatar,
+            university: message.sender.university
+          },
+          receiver: {
+            id: message.receiver.id,
+            first_name: message.receiver.firstName || '',
+            last_name: message.receiver.lastName || '',
+            avatar_url: message.receiver.avatar,
+            university: message.receiver.university
+          }
+        }
       }
     })
 
