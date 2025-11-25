@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken'
 import { PrismaClient } from '@prisma/client'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib'
 
 const prisma = new PrismaClient()
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -61,9 +61,7 @@ async function watermarkPDF(pdfBuffer: Buffer, watermarkText: string): Promise<B
         font: font,
         color: rgb(0.9, 0.9, 0.9),
         opacity: 0.1,
-        rotate: {
-          angle: 45,
-        },
+        rotate: degrees(45),
       })
     }
 

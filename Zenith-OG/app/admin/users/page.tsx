@@ -71,8 +71,9 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const token = localStorage.getItem('auth-token')
-      if (!token) {
+      // Verify authentication using server-side cookie
+      const authResp = await fetch('/api/auth/me', { credentials: 'include' })
+      if (!authResp.ok) {
         router.push('/login')
         return
       }
@@ -86,7 +87,7 @@ export default function AdminUsers() {
       })
 
       const response = await fetch(`/api/admin/users?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -112,10 +113,9 @@ export default function AdminUsers() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const token = localStorage.getItem('auth-token')
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        credentials: 'include'
       })
 
       if (!response.ok) {
@@ -150,17 +150,18 @@ export default function AdminUsers() {
     studentNumber?: string
   }) => {
     try {
-      const token = localStorage.getItem('auth-token')
-      if (!token) {
+      // Ensure admin is authenticated via cookie
+      const authResp = await fetch('/api/auth/me', { credentials: 'include' })
+      if (!authResp.ok) {
         router.push('/login')
         return
       }
 
       const response = await fetch('/api/admin/users', {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
       })
@@ -182,15 +183,22 @@ export default function AdminUsers() {
           firstName: data.user.firstName,
           lastName: data.user.lastName,
           university: data.user.university,
-          verified: data.user.verified,
+          phone: data.user.phone ?? null,
+          verified: data.user.verified ?? false,
           isAdmin: false,
-          roles: [],
+          roles: data.user.roles ?? [],
           lastLogin: null,
-          emailVerified: false,
-          accountLocked: false,
+          emailVerified: data.user.emailVerified ?? false,
+          accountLocked: data.user.accountLocked ?? false,
           productsCount: 0,
           ordersCount: 0,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          profilePicture: data.user.profilePicture ?? null,
+          studentCardImage: data.user.studentCardImage ?? null,
+          idDocumentImage: data.user.idDocumentImage ?? null,
+          documentsUploaded: data.user.documentsUploaded ?? false,
+          adminVerified: data.user.adminVerified ?? false,
+          verificationNotes: data.user.verificationNotes ?? null
         }
       ])
       setShowCreateModal(false)
@@ -203,12 +211,11 @@ export default function AdminUsers() {
 
   const handleToggleUserStatus = async (user: User) => {
     try {
-      const token = localStorage.getItem('auth-token')
       const response = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           verified: !user.verified
@@ -230,12 +237,11 @@ export default function AdminUsers() {
 
   const handleVerifyUser = async (user: User) => {
     try {
-      const token = localStorage.getItem('auth-token')
       const response = await fetch(`/api/admin/users/${user.id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           adminVerified: !user.adminVerified

@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAuthenticatedUser } from '@/lib/auth'
+import { cookies } from 'next/headers'
+import jwt from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+
+async function getAuthenticatedUser(request: NextRequest) {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('auth-token')?.value
+
+    if (!token) return null
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any
+    return decoded
+  } catch (error) {
+    return null
+  }
+
+}
 
 // POST /api/user/verify-email - Verify email with code
 export async function POST(request: NextRequest) {

@@ -229,7 +229,11 @@ export default function NotesPage() {
 
                 {/* Free Only */}
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="free-only" checked={showFreeOnly} onCheckedChange={setShowFreeOnly} />
+                  <Checkbox
+                    id="free-only"
+                    checked={showFreeOnly}
+                    onCheckedChange={(checked) => setShowFreeOnly(Boolean(checked))}
+                  />
                   <label htmlFor="free-only" className="text-sm font-medium">
                     Free downloads only
                   </label>
