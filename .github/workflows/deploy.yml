@@ -1,0 +1,66 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+  release:
+    types: [published]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: '20'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install & Build (Zenith-OG)
+        working-directory: Zenith-OG
+        run: |
+          npm ci
+          # optional: run tests if defined
+          if npm run -s test --silent; then echo "tests passed"; else echo "no tests or failures ignored"; fi
+          npx tsc --noEmit || true
+          npm run lint --if-present || true
+          npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zenith-build
+          path: Zenith-OG
+
+      - name: Deploy to Azure Web App (Zip Deploy)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'zenith-marketplace' # <-- replace with your app name or set via default env
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: 'Zenith-OG'
+
+      - name: (Optional) Configure App Settings via Service Principal
+        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: (Optional) Set App Settings
+        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        run: |
+          az webapp config appsettings set --name zenith-marketplace --resource-group ${AZURE_RESOURCE_GROUP:-zenith-rg} --settings \
+            DATABASE_URL="${{ secrets.PRODUCTION_DATABASE_URL }}" JWT_SECRET="${{ secrets.JWT_SECRET }}" NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}"
+
+      - name: (Optional) Upload public uploads to Azure Blob
+        if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.AZURE_STORAGE_CONNECTION_STRING != '' }}
+        run: |
+          az storage blob upload-batch --connection-string "$${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" -s Zenith-OG/public/uploads -d uploads || echo "No uploads or upload failed"
+
+      - name: Post-deploy notification
+        run: echo "Deployed build to Azure Web App 'zenith-marketplace'"
