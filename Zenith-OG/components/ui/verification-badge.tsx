@@ -46,7 +46,7 @@ export function VerificationBadge({
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
       text: 'Verification Incomplete',
-      description: 'Upload your profile picture, student card, and ID to get verified'
+      description: 'Upload your profile picture, proof of registration, and ID to get verified'
     }
   }
 

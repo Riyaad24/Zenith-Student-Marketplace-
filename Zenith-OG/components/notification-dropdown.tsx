@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Bell, X, Check, Clock, AlertCircle, MessageSquare, ShoppingBag, Award } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/components/auth-provider'
+import { useNotificationCount } from '@/app/hooks/useNotificationCount'
 import Link from 'next/link'
 
 interface Notification {
@@ -27,6 +28,7 @@ export default function NotificationDropdown({ className }: NotificationDropdown
   const [hasMore, setHasMore] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { user } = useAuth()
+  const { unreadCount, refreshCount, decrementCount, resetCount } = useNotificationCount()
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -46,8 +48,10 @@ export default function NotificationDropdown({ className }: NotificationDropdown
   useEffect(() => {
     if (isOpen && user) {
       fetchNotifications()
+      // Also refresh the count when opening the dropdown
+      refreshCount()
     }
-  }, [isOpen, user])
+  }, [isOpen, user, refreshCount])
 
   const fetchNotifications = async () => {
     setLoading(true)
@@ -95,6 +99,8 @@ export default function NotificationDropdown({ className }: NotificationDropdown
               : notif
           )
         )
+        // Decrement the unread count
+        decrementCount()
       }
     } catch (error) {
       console.error('Error marking notification as read:', error)
@@ -117,6 +123,8 @@ export default function NotificationDropdown({ className }: NotificationDropdown
         setNotifications(prev => 
           prev.map(notif => ({ ...notif, read: true }))
         )
+        // Reset the unread count to zero
+        resetCount()
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error)
@@ -177,6 +185,11 @@ export default function NotificationDropdown({ className }: NotificationDropdown
         onClick={handleClick}
       >
         <Bell className="h-5 w-5" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
         <span className="sr-only">Notifications</span>
       </Button>
 

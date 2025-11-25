@@ -208,14 +208,14 @@ export function validateVerificationFile(file: File, type: 'profile' | 'studentC
   // File size limits (in MB)
   const maxSizes = {
     profile: 5,      // 5MB for profile pictures
-    studentCard: 10, // 10MB for student card scans
+    studentCard: 10, // 10MB for proof of registration scans
     idDocument: 10   // 10MB for ID document scans
   }
 
   // Allowed file types
   const allowedTypes = {
     profile: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-    studentCard: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'],
+    studentCard: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
     idDocument: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf']
   }
 

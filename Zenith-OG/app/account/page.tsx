@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { FileUpload } from "@/components/ui/file-upload"
 import { VerificationBadge, VerificationShield } from "@/components/ui/verification-badge"
+import { EmailVerificationSection } from "@/components/email-verification"
 
 interface UserProfile {
   id: string
@@ -27,6 +28,7 @@ interface UserProfile {
   bio?: string
   verified: boolean
   joinedDate: string
+  isAdmin?: boolean // Add admin flag
   // Verification fields
   profilePicture?: string | null
   studentCardImage?: string | null
@@ -35,6 +37,9 @@ interface UserProfile {
   adminVerified: boolean
   verificationNotes?: string | null
   verifiedAt?: string | null
+  security?: {
+    emailVerified: boolean
+  }
   stats: {
     listings: number
     totalListings: number
@@ -50,6 +55,8 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [listings, setListings] = useState<any[]>([])
+  const [listingsLoading, setListingsLoading] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -73,6 +80,7 @@ export default function AccountPage() {
   useEffect(() => {
     if (user) {
       fetchProfile()
+      fetchListings()
     }
   }, [user])
 
@@ -101,6 +109,70 @@ export default function AccountPage() {
     }
   }
 
+  const fetchListings = async () => {
+    setListingsLoading(true)
+    try {
+      const response = await fetch('/api/products/my-listings?status=all', {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setListings(data.products || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch listings:', error)
+    } finally {
+      setListingsLoading(false)
+    }
+  }
+
+  const handleDeleteListing = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this listing?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/products/my-listings?id=${productId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+
+      if (response.ok) {
+        // Refresh listings
+        fetchListings()
+      } else {
+        alert('Failed to delete listing')
+      }
+    } catch (error) {
+      console.error('Failed to delete listing:', error)
+      alert('Failed to delete listing')
+    }
+  }
+
+  const handleMarkAsSold = async (productId: string) => {
+    try {
+      const response = await fetch('/api/products/my-listings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ productId, status: 'sold' })
+      })
+
+      if (response.ok) {
+        // Refresh listings
+        fetchListings()
+      } else {
+        alert('Failed to update listing')
+      }
+    } catch (error) {
+      console.error('Failed to update listing:', error)
+      alert('Failed to update listing')
+    }
+  }
+
   const handleFileUpload = (type: 'profile' | 'studentCard' | 'idDocument', url: string) => {
     setProfile(prev => {
       if (!prev) return null
@@ -117,8 +189,8 @@ export default function AccountPage() {
       }
       
       // Check if all documents are uploaded
-      const hasAllDocs = (updated.profilePicture && updated.studentCardImage && updated.idDocumentImage)
-      updated.documentsUploaded = hasAllDocs || false
+      const hasAllDocs = !!(updated.profilePicture && updated.studentCardImage && updated.idDocumentImage)
+      updated.documentsUploaded = hasAllDocs
       
       return updated
     })
@@ -179,58 +251,8 @@ export default function AccountPage() {
     )
   }
 
-  // Mock listings data
-  const listings = [
-    {
-      id: "1",
-      title: "Calculus Textbook",
-      price: 450,
-      image: "/placeholder.svg?height=100&width=100&text=Textbook",
-      status: "active",
-      views: 24,
-      date: "2 days ago",
-    },
-    {
-      id: "2",
-      title: "HP Laptop",
-      price: 3500,
-      image: "/placeholder.svg?height=100&width=100&text=Laptop",
-      status: "active",
-      views: 56,
-      date: "1 week ago",
-    },
-    {
-      id: "3",
-      title: "Economics Notes",
-      price: 150,
-      image: "/placeholder.svg?height=100&width=100&text=Notes",
-      status: "sold",
-      views: 18,
-      date: "2 weeks ago",
-    },
-  ]
-
-  // Mock purchases data
-  const purchases = [
-    {
-      id: "1",
-      title: "Physics Textbook",
-      price: 380,
-      image: "/placeholder.svg?height=100&width=100&text=Physics",
-      seller: "Sarah K.",
-      date: "1 month ago",
-      status: "completed",
-    },
-    {
-      id: "2",
-      title: "Scientific Calculator",
-      price: 250,
-      image: "/placeholder.svg?height=100&width=100&text=Calculator",
-      seller: "Michael S.",
-      date: "2 months ago",
-      status: "completed",
-    },
-  ]
+  // Purchases will come from the API/database in the future
+  const purchases: any[] = []
 
   return (
     <div className="container px-4 md:px-6 py-8">
@@ -315,14 +337,17 @@ export default function AccountPage() {
               <User className="h-4 w-4 mr-2" />
               Profile
             </Button>
-            <Button
-              variant={activeTab === "verification" ? "default" : "ghost"}
-              className={`w-full justify-start ${activeTab === "verification" ? "bg-purple-700 hover:bg-purple-800" : ""}`}
-              onClick={() => setActiveTab("verification")}
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              Verification
-            </Button>
+            {/* Hide verification tab for admins */}
+            {!profile.isAdmin && (
+              <Button
+                variant={activeTab === "verification" ? "default" : "ghost"}
+                className={`w-full justify-start ${activeTab === "verification" ? "bg-purple-700 hover:bg-purple-800" : ""}`}
+                onClick={() => setActiveTab("verification")}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Verification
+              </Button>
+            )}
             <Button
               variant={activeTab === "listings" ? "default" : "ghost"}
               className={`w-full justify-start ${activeTab === "listings" ? "bg-purple-700 hover:bg-purple-800" : ""}`}
@@ -352,6 +377,50 @@ export default function AccountPage() {
 
         {/* Main Content */}
         <div className="md:col-span-3">
+          {/* Verification Reminder Banner - Hidden for admins */}
+          {!profile.isAdmin && !profile.documentsUploaded && (
+            <div className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 p-6 rounded-lg shadow-sm">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <Shield className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="text-lg font-semibold text-yellow-900">
+                    Complete Your Account Verification
+                  </h3>
+                  <p className="mt-2 text-sm text-yellow-800">
+                    To unlock full access to Zenith Marketplace and build trust with other students, please submit your verification documents. 
+                    Verified accounts can buy, sell, and trade with confidence.
+                  </p>
+                  <div className="mt-4">
+                    <Button
+                      onClick={() => setActiveTab("verification")}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Submit Verification Documents
+                    </Button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    // Store dismissal in localStorage
+                    localStorage.setItem('verification-reminder-dismissed', 'true')
+                    const banner = document.getElementById('verification-banner')
+                    if (banner) banner.style.display = 'none'
+                  }}
+                  className="flex-shrink-0 ml-4 text-yellow-600 hover:text-yellow-800"
+                  aria-label="Dismiss"
+                  id="verification-banner"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
           {activeTab === "profile" && (
             <Card>
               <CardHeader>
@@ -491,8 +560,8 @@ export default function AccountPage() {
                       type="studentCard"
                       currentFile={profile.studentCardImage}
                       onUploadSuccess={(url) => handleFileUpload('studentCard', url)}
-                      title="Student Card"
-                      description="Upload a photo of your student card"
+                      title="Proof of registration"
+                      description="Upload an official proof of registration/enrolment letter showing your name, institution, and current year/semester."
                       acceptedFormats="JPEG, PNG, WebP, PDF"
                       maxSize="10MB"
                     />
@@ -511,12 +580,25 @@ export default function AccountPage() {
                   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Verification Process:</h4>
                     <ul className="text-sm text-gray-600 space-y-1">
-                      <li>1. Upload all three required documents (profile picture, student card, and ID)</li>
+                      <li>1. Upload all three required documents (profile picture, proof of registration, and ID)</li>
                       <li>2. Our support team will review your documents within 24-48 hours</li>
                       <li>3. Once verified, you'll get a green verification badge on your profile</li>
                       <li>4. Verified students get priority in search results and buyer trust</li>
                     </ul>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Email Verification Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Verification</CardTitle>
+                  <CardDescription>
+                    Verify your email address to enhance account security
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <EmailVerificationSection />
                 </CardContent>
               </Card>
             </div>
@@ -537,76 +619,229 @@ export default function AccountPage() {
                 <Tabs defaultValue="active">
                   <TabsList className="mb-4">
                     <TabsTrigger value="active">Active</TabsTrigger>
+                    <TabsTrigger value="pending">Pending Approval</TabsTrigger>
+                    <TabsTrigger value="rejected">Rejected</TabsTrigger>
                     <TabsTrigger value="sold">Sold</TabsTrigger>
                     <TabsTrigger value="drafts">Drafts</TabsTrigger>
                   </TabsList>
                   <TabsContent value="active" className="mt-0 space-y-4">
-                    {listings
-                      .filter((listing) => listing.status === "active")
-                      .map((listing) => (
-                        <div key={listing.id} className="flex items-center border rounded-lg p-4">
-                          <div className="relative h-16 w-16 rounded-md overflow-hidden">
-                            <Image
-                              src={listing.image || "/placeholder.svg"}
-                              alt={listing.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="ml-4 flex-1">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-medium">{listing.title}</h3>
-                                <div className="text-sm text-muted-foreground">
-                                  Listed {listing.date} • {listing.views} views
+                    {listingsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading listings...</p>
+                      </div>
+                    ) : listings.filter((listing) => listing.status === "active").length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No active listings</p>
+                        <Link href="/sell">
+                          <Button className="mt-4 bg-purple-700 hover:bg-purple-800">Create Your First Listing</Button>
+                        </Link>
+                      </div>
+                    ) : (
+                      listings
+                        .filter((listing) => listing.status === "active")
+                        .map((listing) => (
+                          <div key={listing.id} className="flex items-center border rounded-lg p-4">
+                            <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+                              <Image
+                                src={listing.image || "/placeholder.svg"}
+                                alt={listing.title}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="ml-4 flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium truncate">{listing.title}</h3>
+                                  <div className="text-sm text-muted-foreground">
+                                    Listed {new Date(listing.createdAt).toLocaleDateString()} • Qty: {listing.quantity}
+                                  </div>
+                                  {listing.category && (
+                                    <div className="text-xs text-purple-600 mt-1">
+                                      {listing.category.name}
+                                    </div>
+                                  )}
                                 </div>
+                                <div className="font-bold whitespace-nowrap">R{listing.price.toFixed(2)}</div>
                               </div>
-                              <div className="font-bold">R{listing.price}</div>
+                            </div>
+                            <div className="ml-4 flex gap-2 flex-shrink-0">
+                              <Link href={`/product/${listing.id}`}>
+                                <Button variant="outline" size="sm">
+                                  View
+                                </Button>
+                              </Link>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleMarkAsSold(listing.id)}
+                              >
+                                Mark Sold
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="text-red-500 hover:text-red-600"
+                                onClick={() => handleDeleteListing(listing.id)}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           </div>
-                          <div className="ml-4 flex gap-2">
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                            <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600">
-                              Delete
-                            </Button>
+                        ))
+                    )}
+                  </TabsContent>
+                  <TabsContent value="pending" className="mt-0 space-y-4">
+                    {listingsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading listings...</p>
+                      </div>
+                    ) : listings.filter((listing) => listing.status === "pending").length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No pending listings</p>
+                        <p className="text-sm text-gray-500 mt-2">Listings awaiting admin approval will appear here</p>
+                      </div>
+                    ) : (
+                      listings
+                        .filter((listing) => listing.status === "pending")
+                        .map((listing) => (
+                          <div key={listing.id} className="flex items-center border rounded-lg p-4 bg-yellow-50 border-yellow-200">
+                            <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+                              <Image
+                                src={listing.image || "/placeholder.svg"}
+                                alt={listing.title}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div className="ml-4 flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium truncate">{listing.title}</h3>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                      ⏳ Awaiting Admin Approval
+                                    </span>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground mt-1">
+                                    Submitted {new Date(listing.createdAt).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                <div className="font-bold whitespace-nowrap">R{listing.price.toFixed(2)}</div>
+                              </div>
+                            </div>
+                            <div className="ml-4 flex gap-2 flex-shrink-0">
+                              <Link href={`/product/${listing.id}`}>
+                                <Button variant="outline" size="sm">
+                                  View Details
+                                </Button>
+                              </Link>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                    )}
+                  </TabsContent>
+                  <TabsContent value="rejected" className="mt-0 space-y-4">
+                    {listingsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading listings...</p>
+                      </div>
+                    ) : listings.filter((listing) => listing.status === "rejected").length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No rejected listings</p>
+                      </div>
+                    ) : (
+                      listings
+                        .filter((listing) => listing.status === "rejected")
+                        .map((listing) => (
+                          <div key={listing.id} className="flex items-center border rounded-lg p-4 bg-red-50 border-red-200">
+                            <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+                              <Image
+                                src={listing.image || "/placeholder.svg"}
+                                alt={listing.title}
+                                fill
+                                className="object-cover opacity-75"
+                              />
+                            </div>
+                            <div className="ml-4 flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium truncate">{listing.title}</h3>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                      ✗ Rejected
+                                    </span>
+                                  </div>
+                                  {listing.rejectionReason && (
+                                    <div className="text-sm text-red-600 mt-2 p-2 bg-red-50 rounded border border-red-200">
+                                      <strong>Reason:</strong> {listing.rejectionReason}
+                                    </div>
+                                  )}
+                                  <div className="text-sm text-muted-foreground mt-1">
+                                    Rejected {new Date(listing.updatedAt).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                <div className="font-bold whitespace-nowrap">R{listing.price.toFixed(2)}</div>
+                              </div>
+                            </div>
+                            <div className="ml-4 flex gap-2 flex-shrink-0">
+                              <Link href={`/sell?edit=${listing.id}`}>
+                                <Button variant="outline" size="sm" className="bg-blue-50 hover:bg-blue-100">
+                                  Edit & Resubmit
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        ))
+                    )}
                   </TabsContent>
                   <TabsContent value="sold" className="mt-0 space-y-4">
-                    {listings
-                      .filter((listing) => listing.status === "sold")
-                      .map((listing) => (
-                        <div key={listing.id} className="flex items-center border rounded-lg p-4">
-                          <div className="relative h-16 w-16 rounded-md overflow-hidden">
-                            <Image
-                              src={listing.image || "/placeholder.svg"}
-                              alt={listing.title}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="ml-4 flex-1">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-medium">{listing.title}</h3>
-                                <div className="text-sm text-muted-foreground">Sold {listing.date}</div>
+                    {listingsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600">Loading listings...</p>
+                      </div>
+                    ) : listings.filter((listing) => listing.status === "sold").length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">No sold items yet</p>
+                      </div>
+                    ) : (
+                      listings
+                        .filter((listing) => listing.status === "sold")
+                        .map((listing) => (
+                          <div key={listing.id} className="flex items-center border rounded-lg p-4 opacity-75">
+                            <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+                              <Image
+                                src={listing.image || "/placeholder.svg"}
+                                alt={listing.title}
+                                fill
+                                className="object-cover grayscale"
+                              />
+                            </div>
+                            <div className="ml-4 flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-medium truncate">{listing.title}</h3>
+                                  <div className="text-sm text-muted-foreground">
+                                    Sold on {new Date(listing.updatedAt).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                <div className="font-bold whitespace-nowrap">R{listing.price.toFixed(2)}</div>
                               </div>
-                              <div className="font-bold">R{listing.price}</div>
+                            </div>
+                            <div className="ml-4 flex gap-2 flex-shrink-0">
+                              <Link href={`/product/${listing.id}`}>
+                                <Button variant="outline" size="sm">
+                                  View Details
+                                </Button>
+                              </Link>
                             </div>
                           </div>
-                          <div className="ml-4 flex gap-2">
-                            <Button variant="outline" size="sm">
-                              View Details
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Relist
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                    )}
                   </TabsContent>
                   <TabsContent value="drafts" className="mt-0">
                     <div className="text-center py-8">

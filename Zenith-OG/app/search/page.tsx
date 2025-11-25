@@ -19,6 +19,7 @@ interface Product {
   price: number
   quantity: number
   image: string | null
+  images: string | null  // JSON array of image URLs
   condition: string
   location: string | null
   university: string | null
@@ -46,6 +47,21 @@ export default function SearchPage() {
   const { addItem } = useCart()
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { user } = useAuth()
+
+  // Helper function to get the first image from product
+  const getProductImage = (product: Product): string => {
+    if (product.images) {
+      try {
+        const parsed = JSON.parse(product.images)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed[0]
+        }
+      } catch {
+        // If parsing fails, fall through
+      }
+    }
+    return product.image || "/placeholder.svg"
+  }
 
   useEffect(() => {
     const query = searchParams.get('q')
@@ -93,7 +109,7 @@ export default function SearchPage() {
       name: product.title,
       price: product.price,
       maxQuantity: product.quantity,
-      image: product.image || undefined,
+      image: getProductImage(product),
       sellerId: product.seller.id
     })
   }
@@ -168,7 +184,7 @@ export default function SearchPage() {
                   <Card key={product.id} className="overflow-hidden hover-card">
                     <div className="relative h-48">
                       <Image
-                        src={product.image || "/placeholder.svg"}
+                        src={getProductImage(product)}
                         alt={product.title}
                         fill
                         className="object-cover"

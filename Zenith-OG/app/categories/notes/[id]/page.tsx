@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,82 +23,63 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const [newComment, setNewComment] = useState("")
   const [userRating, setUserRating] = useState(0)
+  const [note, setNote] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
-  // Sample note data (in real app, fetch based on params.id)
-  const note = {
-    id: 1,
-    title: "Financial Accounting Fundamentals - Complete Study Guide",
-    courseCode: "ACC1001",
-    institution: "University of Cape Town (UCT)",
-    year: "First Year",
-    type: "Study Guide",
-    faculty: "Commerce & Management",
-    price: 85,
-    format: "PDF",
-    pages: 45,
-    rating: 4.8,
-    reviews: 23,
-    downloads: 156,
-    seller: "Sarah M.",
-    sellerRating: 4.9,
-    sellerSales: 47,
-    description:
-      "Comprehensive study guide covering all ACC1001 topics with examples and practice questions. Includes detailed explanations of accounting principles, financial statements, and practical exercises.",
-    contents: [
-      "Chapter 1: Introduction to Accounting",
-      "Chapter 2: The Accounting Equation",
-      "Chapter 3: Recording Transactions",
-      "Chapter 4: Financial Statements",
-      "Chapter 5: Adjusting Entries",
-      "Practice Questions & Solutions",
-    ],
-    preview: true,
-    verified: true,
-    helpful: 89,
-    uploadDate: "2024-01-15",
-    lastUpdated: "2024-01-20",
-    cover: "/placeholder.svg?height=600&width=400&text=Accounting+Guide",
-    previewImages: [
-      "/placeholder.svg?height=800&width=600&text=Preview+Page+1",
-      "/placeholder.svg?height=800&width=600&text=Preview+Page+2",
-      "/placeholder.svg?height=800&width=600&text=Preview+Page+3",
-    ],
+  // Fetch real note data from API
+  useEffect(() => {
+    const fetchNote = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/products/${params.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setNote(data)
+        } else {
+          console.error('Failed to fetch note')
+        }
+      } catch (error) {
+        console.error('Error fetching note:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchNote()
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FileText className="h-12 w-12 text-purple-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">Loading study material...</p>
+        </div>
+      </div>
+    )
   }
 
-  const comments = [
-    {
-      id: 1,
-      user: "Mike K.",
-      rating: 5,
-      date: "2024-01-25",
-      comment:
-        "Excellent study guide! Really helped me understand the concepts better. The practice questions are especially useful.",
-      helpful: 12,
-      verified: true,
-    },
-    {
-      id: 2,
-      user: "Lisa P.",
-      rating: 4,
-      date: "2024-01-22",
-      comment: "Good content overall, but could use more examples in Chapter 3. Still worth the price though.",
-      helpful: 8,
-      verified: false,
-    },
-    {
-      id: 3,
-      user: "David R.",
-      rating: 5,
-      date: "2024-01-20",
-      comment: "Perfect for exam prep! Covers everything you need to know for ACC1001. Highly recommend.",
-      helpful: 15,
-      verified: true,
-    },
-  ]
+  if (!note) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Study material not found</h2>
+          <p className="text-gray-600 mb-4">The study material you're looking for doesn't exist.</p>
+          <Link href="/categories/notes">
+            <Button>Browse All Notes</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const comments = note.reviews || []
 
   return (
     <div className="min-h-screen bg-gray-50">

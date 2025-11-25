@@ -4,6 +4,9 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { getClientIP } from '@/lib/admin-auth'
 import { logAdminSignin } from '@/lib/audit'
+import { cookies } from 'next/headers'
+
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,7 +97,7 @@ export async function POST(request: NextRequest) {
             email: user.email,
             roles
           },
-          process.env.NEXTAUTH_SECRET || 'fallback-secret',
+          jwtSecret,
           { expiresIn: '24h' }
         )
 
@@ -108,6 +111,17 @@ export async function POST(request: NextRequest) {
           roles,
           isAdmin: true
         }
+
+        // Set HTTP-only cookie
+        const cookieStore = await cookies()
+        cookieStore.set('auth-token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24, // 24 hours
+        })
+
+        console.log('Login API: Admin cookie set')
 
         return NextResponse.json({
           success: true,
@@ -128,7 +142,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         roles
       },
-      process.env.NEXTAUTH_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '24h' }
     )
 
@@ -143,6 +157,17 @@ export async function POST(request: NextRequest) {
       roles,
       isAdmin: false
     }
+
+    // Set HTTP-only cookie
+    const cookieStore = await cookies()
+    cookieStore.set('auth-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24, // 24 hours
+    })
+
+    console.log('Login API: User cookie set')
 
     return NextResponse.json({
       success: true,

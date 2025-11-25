@@ -1,51 +1,22 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { signUp } from "@/app/actions/auth"
 import Link from "next/link"
 import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
 import { validateStudentEmail, validateSAPhoneNumber, getInstitutionName } from "@/lib/validation"
-
-const universities = [
-  "University of Cape Town",
-  "University of the Witwatersrand",
-  "Stellenbosch University",
-  "University of Pretoria",
-  "University of KwaZulu-Natal",
-  "University of Johannesburg",
-  "Rhodes University",
-  "North-West University",
-  "University of the Free State",
-  "University of the Western Cape",
-  "Nelson Mandela University",
-  "University of South Africa (UNISA)",
-  "Tshwane University of Technology",
-  "Cape Peninsula University of Technology",
-  "Durban University of Technology",
-  "Central University of Technology",
-  "Vaal University of Technology",
-  "Mangosuthu University of Technology",
-  "Richfield Graduate Institute of Technology",
-  "Eduvos",
-  "Boston City Campus",
-  "Damelin",
-  "Rosebank College",
-  "Varsity College",
-  "The Independent Institute of Education (IIE)",
-  "Monash South Africa",
-  "University of Fort Hare",
-  "Walter Sisulu University",
-  "University of Limpopo",
-  "University of Zululand",
-  "Sol Plaatje University",
-  "University of Mpumalanga",
-]
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/toast"
+import { SOUTH_AFRICAN_INSTITUTIONS } from "@/lib/institutions"
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const { refreshUser } = useAuth()
+  const toast = useToast()
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [formData, setFormData] = useState({
     firstName: '',
@@ -114,24 +85,58 @@ export default function RegisterPage() {
       return
     }
 
-    // Create FormData for server action
-    const submitData = new FormData()
-    submitData.append('firstName', formData.firstName)
-    submitData.append('lastName', formData.lastName)
-    submitData.append('email', formData.email)
-    submitData.append('phone', phoneValidation.formatted || formData.phone)
-    submitData.append('password', formData.password)
-    submitData.append('university', formData.university)
+    // Call API directly instead of server action
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: phoneValidation.formatted || formData.phone,
+          password: formData.password,
+          university: formData.university,
+        }),
+        credentials: 'include',
+      })
 
-    const result = await signUp(submitData)
+      const result = await response.json()
 
-    if (result.error) {
-      setMessage({ type: "error", text: result.error })
-    } else if (result.success) {
-      setMessage({ type: "success", text: result.message || "Account created successfully!" })
+      if (!response.ok || result.error) {
+        setMessage({ type: "error", text: result.error || 'Registration failed' })
+        setLoading(false)
+        return
+      }
+
+      // Store token if provided
+      if (result.token) {
+        localStorage.setItem('auth-token', result.token)
+      }
+
+      // Show toast success
+      try {
+        toast.showToast('success', result.message || 'Account created — signing you in...')
+      } catch (e) {
+        // no-op if toast unavailable
+      }
+
+      // Refresh client auth state
+      await refreshUser()
+      console.log('User auth refreshed after registration')
+
+      // Redirect with full page reload
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('Registration error:', error)
+      setMessage({ type: "error", text: error.message || 'Registration failed' })
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -270,7 +275,7 @@ export default function RegisterPage() {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="">Select your institution</option>
-                {universities.map((uni) => (
+                {SOUTH_AFRICAN_INSTITUTIONS.map((uni) => (
                   <option key={uni} value={uni}>
                     {uni}
                   </option>

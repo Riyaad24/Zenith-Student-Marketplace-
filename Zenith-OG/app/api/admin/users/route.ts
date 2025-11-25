@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAdminAuth, AdminAuthResult } from '@/middleware/adminAuth'
@@ -23,10 +24,10 @@ async function handleUsersGet(request: NextRequest, authResult: AdminAuthResult)
     
     if (search) {
       where.OR = [
-        { email: { contains: search, mode: 'insensitive' } },
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { university: { contains: search, mode: 'insensitive' } }
+        { email: { contains: search } },
+        { firstName: { contains: search } },
+        { lastName: { contains: search } },
+        { university: { contains: search } }
       ]
     }
 
@@ -44,25 +45,46 @@ async function handleUsersGet(request: NextRequest, authResult: AdminAuthResult)
       }
     }
 
-    // Log search query for audit
+    // Log search query for audit (skip if adminId is 'allowlist')
     const searchQuery = search ? `search:${search}` : null
-    await auditLog(authResult.adminId, null, 'SEARCH_USERS', searchQuery, getClientIP(request))
+    if (authResult.adminId && authResult.adminId !== 'allowlist') {
+      await auditLog(authResult.adminId, null, 'SEARCH_USERS', searchQuery, getClientIP(request))
+    }
 
     // Get users with pagination
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        include: {
-          roleAssignments: {
-            include: { role: true }
-          },
-          admin: true,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          university: true,
+          phone: true,
+          verified: true,
+          createdAt: true,
+          profilePicture: true,
+          studentCardImage: true,
+          idDocumentImage: true,
+          documentsUploaded: true,
+          adminVerified: true,
+          verificationNotes: true,
           security: {
             select: {
               lastLogin: true,
               emailVerified: true,
               accountLocked: true
             }
+          },
+          admin: {
+            select: {
+              studentNumber: true,
+              permissions: true
+            }
+          },
+          roleAssignments: {
+            include: { role: true }
           },
           _count: {
             select: {
@@ -85,6 +107,7 @@ async function handleUsersGet(request: NextRequest, authResult: AdminAuthResult)
         firstName: user.firstName,
         lastName: user.lastName,
         university: user.university,
+        phone: user.phone,
         verified: user.verified,
         isAdmin: !!user.admin,
         roles: user.roleAssignments.map(ra => ra.role.name),
@@ -93,7 +116,13 @@ async function handleUsersGet(request: NextRequest, authResult: AdminAuthResult)
         accountLocked: user.security?.accountLocked,
         productsCount: user._count.products,
         ordersCount: user._count.orders,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        profilePicture: user.profilePicture,
+        studentCardImage: user.studentCardImage,
+        idDocumentImage: user.idDocumentImage,
+        documentsUploaded: user.documentsUploaded,
+        adminVerified: user.adminVerified,
+        verificationNotes: user.verificationNotes
       })),
       pagination: {
         page,
@@ -112,7 +141,7 @@ async function handleUsersGet(request: NextRequest, authResult: AdminAuthResult)
 async function handleUsersPost(request: NextRequest, authResult: AdminAuthResult) {
   try {
 
-    const { email, password, firstName, lastName, university, phone, role = 'student' } = await request.json()
+    const { email, password, firstName, lastName, university, phone, role = 'student', studentNumber } = await request.json()
 
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
@@ -146,7 +175,8 @@ async function handleUsersPost(request: NextRequest, authResult: AdminAuthResult
           lastName,
           university,
           phone,
-          verified: true // Admin-created users are auto-verified
+          verified: true, // Admin-created users are auto-verified
+          adminVerified: role === 'admin' // Auto-verify admins
         }
       })
 
@@ -160,10 +190,51 @@ async function handleUsersPost(request: NextRequest, authResult: AdminAuthResult
         }
       })
 
+      // If creating an admin user, create admin record
+      if (role === 'admin') {
+        // Extract student number from email if it matches pattern, or use provided studentNumber
+        const adminMatch = email.match(/^(\d{9})ads@my\.richfield\.ac\.za$/)
+        const adminStudentNumber = studentNumber || (adminMatch ? adminMatch[1] : null)
+
+        if (!adminStudentNumber) {
+          throw new Error('Student number is required for admin users')
+        }
+
+        await tx.admin.create({
+          data: {
+            userId: user.id,
+            studentNumber: adminStudentNumber,
+            permissions: ['*'], // Full permissions
+            isActive: true
+          }
+        })
+      }
+
       // Assign role
-      const userRole = await tx.userRole.findUnique({
+      let userRole = await tx.userRole.findUnique({
         where: { name: role }
       })
+
+      // Create role if it doesn't exist
+      if (!userRole) {
+        if (role === 'admin') {
+          userRole = await tx.userRole.create({
+            data: {
+              name: 'admin',
+              description: 'Administrator role with full access',
+              permissions: JSON.stringify(['admin', 'read', 'create', 'update', 'delete'])
+            }
+          })
+        } else {
+          userRole = await tx.userRole.create({
+            data: {
+              name: role,
+              description: `${role.charAt(0).toUpperCase() + role.slice(1)} role`,
+              permissions: JSON.stringify(['read'])
+            }
+          })
+        }
+      }
 
       if (userRole) {
         await tx.userRoleAssignment.create({
@@ -177,8 +248,10 @@ async function handleUsersPost(request: NextRequest, authResult: AdminAuthResult
       return user
     })
 
-    // Log admin action
-    await auditLog(authResult.adminId, newUser.id, 'CREATE_USER', null, getClientIP(request))
+    // Log admin action (skip if adminId is 'allowlist')
+    if (authResult.adminId && authResult.adminId !== 'allowlist') {
+      await auditLog(authResult.adminId, newUser.id, 'CREATE_USER', null, getClientIP(request))
+    }
 
     return NextResponse.json({
       success: true,

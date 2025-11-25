@@ -11,49 +11,54 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  firstName  String?  @map("first_name")
-  lastName   String?  @map("last_name")
-  avatar     String?  @map("avatar_url")
+  id         String  @id @default(cuid())
+  email      String  @unique
+  firstName  String? @map("first_name")
+  lastName   String? @map("last_name")
+  avatar     String? @map("avatar_url")
   phone      String?
   university String?
   location   String?
   bio        String?
-  verified   Boolean  @default(false)
-  
+  verified   Boolean @default(false)
+
   // Verification documents
-  profilePicture    String?  @map("profile_picture")
-  studentCardImage  String?  @map("student_card_image")
-  idDocumentImage   String?  @map("id_document_image")
-  
+  profilePicture   String? @db.LongText @map("profile_picture")
+  studentCardImage String? @db.LongText @map("student_card_image") // Proof of registration/enrolment letter
+  idDocumentImage  String? @db.LongText @map("id_document_image")
+
   // Verification status
-  documentsUploaded Boolean  @default(false) @map("documents_uploaded")
-  adminVerified     Boolean  @default(false) @map("admin_verified")
-  verificationNotes String?  @map("verification_notes")
+  documentsUploaded Boolean   @default(false) @map("documents_uploaded")
+  adminVerified     Boolean   @default(false) @map("admin_verified")
+  verificationNotes String?   @map("verification_notes")
   verifiedAt        DateTime? @map("verified_at")
-  
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  products      Product[]
-  orders        Order[]
-  cartItems     CartItem[]
-  reviews       Review[]
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
-  addresses     Address[]
-  notifications Notification[]
-  wishlistItems WishlistItem[]
-  
+  products         Product[]
+  orders           Order[]
+  cartItems        CartItem[]
+  reviews          Review[]
+  sentMessages     Message[]      @relation("SentMessages")
+  receivedMessages Message[]      @relation("ReceivedMessages")
+  addresses        Address[]
+  notifications    Notification[]
+  wishlistItems    WishlistItem[]
+
   // Security Relations
-  security      AccountSecurity?
+  security        AccountSecurity?
   roleAssignments UserRoleAssignment[]
-  sessions      UserSession[]
-  auditLogs     SecurityAuditLog[]
-  dataAccessLogs DataAccessLog[]
-  admin         Admin?
+  sessions        UserSession[]
+  auditLogs       SecurityAuditLog[]
+  dataAccessLogs  DataAccessLog[]
+  admin           Admin?
+
+  // Tutor Relations
+  tutorApplications TutorApplication[]
+  isTutor           Boolean @default(false) @map("is_tutor")
+  tutorVerified     Boolean @default(false) @map("tutor_verified")
 
   @@map("profiles")
 }
@@ -92,25 +97,25 @@ model UserRoleAssignment {
 }
 
 model AccountSecurity {
-  id                    String    @id @default(cuid())
-  userId                String    @unique @map("user_id")
-  passwordHash          String    @map("password_hash")
-  salt                  String
-  twoFactorEnabled      Boolean   @default(false) @map("two_factor_enabled")
-  twoFactorSecret       String?   @map("two_factor_secret")
-  backupCodes           Json?     @map("backup_codes")
-  passwordResetToken    String?   @map("password_reset_token")
-  passwordResetExpires  DateTime? @map("password_reset_expires")
-  emailVerificationToken String?  @map("email_verification_token")
-  emailVerified         Boolean   @default(false) @map("email_verified")
-  emailVerifiedAt       DateTime? @map("email_verified_at")
-  accountLocked         Boolean   @default(false) @map("account_locked")
-  lockedUntil           DateTime? @map("locked_until")
-  failedLoginAttempts   Int       @default(0) @map("failed_login_attempts")
-  lastLogin             DateTime? @map("last_login")
-  lastPasswordChange    DateTime  @default(now()) @map("last_password_change")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  id                     String    @id @default(cuid())
+  userId                 String    @unique @map("user_id")
+  passwordHash           String    @map("password_hash")
+  salt                   String
+  twoFactorEnabled       Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret        String?   @map("two_factor_secret")
+  backupCodes            Json?     @map("backup_codes")
+  passwordResetToken     String?   @map("password_reset_token")
+  passwordResetExpires   DateTime? @map("password_reset_expires")
+  emailVerificationToken String?   @map("email_verification_token")
+  emailVerified          Boolean   @default(false) @map("email_verified")
+  emailVerifiedAt        DateTime? @map("email_verified_at")
+  accountLocked          Boolean   @default(false) @map("account_locked")
+  lockedUntil            DateTime? @map("locked_until")
+  failedLoginAttempts    Int       @default(0) @map("failed_login_attempts")
+  lastLogin              DateTime? @map("last_login")
+  lastPasswordChange     DateTime  @default(now()) @map("last_password_change")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -170,7 +175,7 @@ model DataAccessLog {
   userId     String?  @map("user_id")
   tableName  String   @map("table_name")
   recordId   String?  @map("record_id")
-  operation  String   // SELECT, INSERT, UPDATE, DELETE
+  operation  String // SELECT, INSERT, UPDATE, DELETE
   oldValues  Json?    @map("old_values")
   newValues  Json?    @map("new_values")
   accessedAt DateTime @default(now()) @map("accessed_at")
@@ -182,13 +187,13 @@ model DataAccessLog {
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String   @unique
   description String?
   image       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   products Product[]
@@ -199,31 +204,40 @@ model Category {
 model Product {
   id          String   @id @default(cuid())
   title       String
-  description String
+  description String   @db.Text
   price       Float
   quantity    Int      @default(1) // Available quantity/inventory
   image       String?
-  images      String?  // JSON array of image URLs
-  condition   String   // new, used, refurbished
-  status      String   @default("active") // active, sold, inactive
+  images      String?  @db.Text // JSON array of image URLs
+  pdfFile     String?  @db.Text // PDF file URL for study materials/textbooks
+  condition   String // new, used, refurbished
+  status      String   @default("pending") // pending, approved, rejected, active, sold, inactive
   available   Boolean  @default(true)
-  location    String?  // City or area for local pickup
-  university  String?  // Associated university/college
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  location    String? // City or area for local pickup
+  university  String? // Associated university/college
+  
+  // Admin verification fields
+  adminApproved       Boolean   @default(false) @map("admin_approved")
+  approvedBy          String?   @map("approved_by") // Admin ID who approved
+  approvedAt          DateTime? @map("approved_at")
+  rejectionReason     String?   @db.Text @map("rejection_reason")
+  verificationNotes   String?   @db.Text @map("verification_notes")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Foreign keys
-  categoryId String
-  sellerId   String
+  categoryId String @map("category_id")
+  sellerId   String @map("seller_id")
 
   // Relations
-  category  Category     @relation(fields: [categoryId], references: [id])
-  seller    User         @relation(fields: [sellerId], references: [id])
-  cartItems CartItem[]
-  orderItems OrderItem[]
-  reviews   Review[]
+  category      Category       @relation(fields: [categoryId], references: [id])
+  seller        User           @relation(fields: [sellerId], references: [id])
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
   wishlistItems WishlistItem[]
-  messages  Message[]
+  messages      Message[]
 
   @@map("products")
 }
@@ -247,13 +261,13 @@ model CartItem {
 }
 
 model Order {
-  id            String   @id @default(cuid())
-  total         Float
-  status        String   @default("pending") // pending, confirmed, shipped, delivered, cancelled
-  shippingCost  Float    @default(0)
-  tax           Float    @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  total        Float
+  status       String   @default("pending") // pending, confirmed, shipped, delivered, cancelled
+  shippingCost Float    @default(0)
+  tax          Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Foreign keys
   userId String
@@ -268,7 +282,7 @@ model Order {
 }
 
 model OrderItem {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   quantity Int
   price    Float
 
@@ -285,7 +299,7 @@ model OrderItem {
 
 model Address {
   id         String   @id @default(cuid())
-  type       String   // shipping, billing
+  type       String // shipping, billing
   firstName  String
   lastName   String
   company    String?
@@ -311,7 +325,7 @@ model Address {
 
 model Review {
   id        String   @id @default(cuid())
-  rating    Int      // 1-5 stars
+  rating    Int // 1-5 stars
   comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -350,21 +364,21 @@ model Message {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // order_status, product_review, message, system, verification
+  type      String // order_status, product_review, message, system, verification
   title     String
-  message   String
+  message   String   @db.Text
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Optional metadata for different notification types
-  metadata  Json?    // Can store order ID, product ID, etc.
+  metadata Json? // Can store order ID, product ID, etc.
 
   // Foreign keys
-  userId    String
+  userId String
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
@@ -379,8 +393,8 @@ model WishlistItem {
   productId String
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@map("wishlist_items")
@@ -388,20 +402,20 @@ model WishlistItem {
 
 // Admin Models
 model Admin {
-  id                String    @id @default(cuid())
-  userId            String    @unique @map("user_id")
-  studentNumber     String?   @map("student_number") // 9 digits without 'ads'
-  email             String?   // Store admin email for reference
-  permissions       Json      @default("[]") // Array of permission strings
-  isActive          Boolean   @default(true) @map("is_active")
-  lastLoginAt       DateTime? @map("last_login_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
-  
+  id            String    @id @default(cuid())
+  userId        String    @unique @map("user_id")
+  studentNumber String?   @map("student_number") // 9 digits without 'ads'
+  email         String? // Store admin email for reference
+  permissions   Json      @default("[]") // Array of permission strings
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
   // Relations
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  signInLogs        AdminSignInLog[]
-  auditActions      AdminAuditLog[]
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signInLogs   AdminSignInLog[]
+  auditActions AdminAuditLog[]
 
   @@index([studentNumber])
   @@index([email])
@@ -409,34 +423,100 @@ model Admin {
 }
 
 model AdminSignInLog {
-  id            String   @id @default(cuid())
-  adminId       String   @map("admin_id")
-  ipAddress     String   @map("ip_address")
-  userAgent     String?  @map("user_agent")
-  signInAt      DateTime @default(now()) @map("sign_in_at")
-  location      String?  // Geo location if available
-  deviceInfo    Json?    @map("device_info") // Browser, OS, etc.
-  
+  id         String   @id @default(cuid())
+  adminId    String   @map("admin_id")
+  ipAddress  String   @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  signInAt   DateTime @default(now()) @map("sign_in_at")
+  location   String? // Geo location if available
+  deviceInfo Json?    @map("device_info") // Browser, OS, etc.
+
   // Relations
-  admin         Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
 
   @@map("admin_sign_in_logs")
 }
 
 model AdminAuditLog {
-  id            String   @id @default(cuid())
-  adminId       String?  @map("admin_id")
-  action        String   // CREATE_USER, UPDATE_USER, DELETE_USER, etc.
-  targetType    String   @map("target_type") // USER, PRODUCT, ORDER, etc.
-  targetId      String?  @map("target_id")
-  oldValues     Json?    @map("old_values")
-  newValues     Json?    @map("new_values")
-  ipAddress     String?  @map("ip_address")
-  userAgent     String?  @map("user_agent")
-  createdAt     DateTime @default(now()) @map("created_at")
-  
+  id         String   @id @default(cuid())
+  adminId    String?  @map("admin_id")
+  action     String // CREATE_USER, UPDATE_USER, DELETE_USER, etc.
+  targetType String   @map("target_type") // USER, PRODUCT, ORDER, etc.
+  targetId   String?  @map("target_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
   // Relations
-  admin         Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
 
   @@map("admin_audit_logs")
 }
+
+// Support Messages Model
+model SupportMessage {
+  id            String    @id @default(cuid())
+  userId        String?   @map("user_id") // Null if sent by non-authenticated user
+  name          String // User's name
+  email         String // Contact email
+  subject       String
+  message       String    @db.Text
+  category      String    @default("general") // general, technical, account, verification, etc.
+  status        String    @default("pending") // pending, in_progress, resolved, closed
+  priority      String    @default("normal") // low, normal, high, urgent
+  read          Boolean   @default(false)
+  adminResponse String?   @map("admin_response") @db.Text
+  respondedBy   String?   @map("responded_by") // Admin ID who responded
+  respondedAt   DateTime? @map("responded_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([read])
+  @@index([createdAt])
+  @@map("support_messages")
+}
+
+// Email Verification Code Model
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String   // 5-digit verification code
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("email_verification_codes")
+}
+
+model TutorApplication {
+  id                   String    @id @default(cuid())
+  userId               String    @map("user_id")
+  fullName             String    @map("full_name")
+  institution          String
+  modules              Json      // Array of module codes
+  qualification        String
+  hourlyRate           Float     @map("hourly_rate")
+  bio                  String    @db.Text
+  profilePicture       String?   @db.LongText @map("profile_picture")
+  proofOfRegistration  String?   @db.LongText @map("proof_of_registration")
+  transcript           String?   @db.LongText @map("transcript")
+  status               String    @default("pending") // pending, approved, rejected
+  submittedAt          DateTime  @default(now()) @map("submitted_at")
+  reviewedAt           DateTime? @map("reviewed_at")
+  reviewedBy           String?   @map("reviewed_by")
+  rejectionReason      String?   @db.Text @map("rejection_reason")
+  verificationNotes    String?   @db.Text @map("verification_notes")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("tutor_applications")
+}
+

@@ -17,16 +17,29 @@ export async function signUp(formData: FormData) {
       return { error: 'Email and password are required' };
     }
 
-    const result = await AuthService.register({
-      email,
-      password,
-      firstName,
-      lastName,
-      university,
-      phone,
+    // Call the API route instead of using AuthService directly
+    const response = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        firstName,
+        lastName,
+        university,
+        phone,
+      }),
     });
 
-    // Set auth cookie
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { error: result.error || 'Registration failed' };
+    }
+
+    // Set auth cookie from server action
     const cookieStore = await cookies();
     cookieStore.set('auth-token', result.token, {
       httpOnly: true,
@@ -35,8 +48,11 @@ export async function signUp(formData: FormData) {
       maxAge: 60 * 60 * 24, // 24 hours
     });
 
-    return { success: true, message: 'Account created successfully!', user: result.user };
+    console.log('Server action: Registration successful, cookie set');
+
+    return { success: true, message: result.message || 'Account created successfully!', user: result.user };
   } catch (error: any) {
+    console.error('Server action registration error:', error);
     return { error: error.message || 'Registration failed' };
   }
 }
@@ -50,12 +66,22 @@ export async function signIn(formData: FormData) {
       return { error: 'Email and password are required' };
     }
 
-    const result = await AuthService.login({
-      email,
-      password,
+    // Call the API route instead of using AuthService directly
+    const response = await fetch(`${process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000'}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
     });
 
-    // Set auth cookie
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { error: result.error || 'Login failed' };
+    }
+
+    // Set auth cookie from server action
     const cookieStore = await cookies();
     cookieStore.set('auth-token', result.token, {
       httpOnly: true,
@@ -64,12 +90,15 @@ export async function signIn(formData: FormData) {
       maxAge: 60 * 60 * 24, // 24 hours
     });
 
+    console.log('Server action: Login successful, cookie set');
+
     return { 
       success: true, 
-      redirectTo: result.user?.redirectTo || '/',
-      token: result.token // Return token so client can store it
+      redirectTo: '/',
+      token: result.token
     };
   } catch (error: any) {
+    console.error('Server action login error:', error);
     return { error: error.message || 'Login failed' };
   }
 }

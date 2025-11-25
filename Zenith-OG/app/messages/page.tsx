@@ -24,9 +24,10 @@ export default function MessagesPage() {
     sending,
     error,
     totalUnreadCount,
+    isConnected,
     sendMessage,
     openConversation,
-  } = useMessaging({ pollInterval: 3000, enablePolling: true })
+  } = useMessaging({ enableRealtime: true, enablePolling: false })
 
   // Get current user
   useEffect(() => {
@@ -99,11 +100,19 @@ export default function MessagesPage() {
             <h1 className="text-4xl font-bold text-gray-900 mb-2">Messages</h1>
             <p className="text-gray-600">Stay connected with other students</p>
           </div>
-          {totalUnreadCount > 0 && (
-            <Badge variant="destructive" className="text-lg px-3 py-1">
-              {totalUnreadCount} unread
-            </Badge>
-          )}
+          <div className="flex items-center gap-4">
+            {isConnected && (
+              <div className="flex items-center gap-2 text-green-600">
+                <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">Connected</span>
+              </div>
+            )}
+            {totalUnreadCount > 0 && (
+              <Badge variant="destructive" className="text-lg px-3 py-1">
+                {totalUnreadCount} unread
+              </Badge>
+            )}
+          </div>
         </div>
 
         {error && (

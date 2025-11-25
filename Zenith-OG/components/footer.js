@@ -1,7 +1,16 @@
+"use client"
+
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from "lucide-react"
+import { Facebook, Twitter, Instagram, Mail, Phone, MapPin, Cookie } from "lucide-react"
 
 export default function Footer() {
+  const handleManageCookies = () => {
+    // Clear the consent to show the banner again
+    localStorage.removeItem('cookie-consent')
+    // Reload the page to show the cookie banner
+    window.location.reload()
+  }
+
   return (
     <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-12">
@@ -74,6 +83,15 @@ export default function Footer() {
                 <Link href="/privacy" className="text-gray-300 hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
+              </li>
+              <li>
+                <button
+                  onClick={handleManageCookies}
+                  className="text-gray-300 hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <Cookie className="h-3.5 w-3.5" />
+                  Cookie Preferences
+                </button>
               </li>
             </ul>
           </div>

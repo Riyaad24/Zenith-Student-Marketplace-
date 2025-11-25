@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,6 +28,7 @@ import {
 import Link from "next/link"
 // Add the Image import if it's not already there
 import Image from "next/image"
+import { SOUTH_AFRICAN_INSTITUTIONS } from "@/lib/institutions"
 
 export default function NotesPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -51,33 +52,6 @@ export default function NotesPage() {
     "Arts & Design",
   ]
 
-  const institutions = [
-    "University of Cape Town (UCT)",
-    "University of the Witwatersrand (Wits)",
-    "University of Pretoria (UP)",
-    "Stellenbosch University",
-    "University of Johannesburg (UJ)",
-    "University of KwaZulu-Natal (UKZN)",
-    "Rhodes University",
-    "North-West University (NWU)",
-    "University of the Free State (UFS)",
-    "University of the Western Cape (UWC)",
-    "UNISA",
-    "Tshwane University of Technology (TUT)",
-    "Cape Peninsula University of Technology (CPUT)",
-    "Durban University of Technology (DUT)",
-    "Central University of Technology (CUT)",
-    "Vaal University of Technology (VUT)",
-    "Mangosuthu University of Technology (MUT)",
-    "Richfield Graduate Institute",
-    "Eduvos",
-    "Boston City Campus",
-    "Damelin",
-    "Rosebank College",
-    "Varsity College",
-    "Milpark Education",
-  ]
-
   const noteTypes = [
     "Lecture Notes",
     "Study Guides",
@@ -89,137 +63,32 @@ export default function NotesPage() {
     "Practical Guides",
   ]
 
-  // Update the sampleNotes array to include cover images
-  const sampleNotes = [
-    {
-      id: 1,
-      title: "Financial Accounting Fundamentals - Complete Study Guide",
-      courseCode: "ACC1001",
-      institution: "University of Cape Town (UCT)",
-      year: "First Year",
-      type: "Study Guide",
-      faculty: "Commerce & Management",
-      price: 85,
-      format: "PDF",
-      pages: 45,
-      rating: 4.8,
-      reviews: 23,
-      downloads: 156,
-      seller: "Sarah M.",
-      description: "Comprehensive study guide covering all ACC1001 topics with examples and practice questions.",
-      preview: true,
-      verified: true,
-      helpful: 89,
-      cover: "/placeholder.svg?height=300&width=200&text=Accounting+Guide",
-    },
-    {
-      id: 2,
-      title: "Introduction to Psychology: Chapters 1-8 Summary",
-      courseCode: "PSY1001",
-      institution: "University of the Witwatersrand (Wits)",
-      year: "First Year",
-      type: "Chapter Summaries",
-      faculty: "Humanities & Social Sciences",
-      price: 0,
-      format: "PDF",
-      pages: 28,
-      rating: 4.6,
-      reviews: 41,
-      downloads: 234,
-      seller: "Mike K.",
-      description: "Detailed chapter summaries with key concepts and theories explained simply.",
-      preview: true,
-      verified: true,
-      helpful: 156,
-      cover: "/placeholder.svg?height=300&width=200&text=Psychology+Notes",
-    },
-    {
-      id: 3,
-      title: "Java Programming - Past Exam Papers & Solutions",
-      courseCode: "CSC2001",
-      institution: "Richfield Graduate Institute",
-      year: "Second Year",
-      type: "Past Exam Papers",
-      faculty: "Information Technology",
-      price: 120,
-      format: "PDF",
-      pages: 67,
-      rating: 4.9,
-      reviews: 18,
-      downloads: 89,
-      seller: "Alex T.",
-      description: "Collection of past exam papers with detailed solutions and explanations.",
-      preview: true,
-      verified: true,
-      helpful: 72,
-      cover: "/placeholder.svg?height=300&width=200&text=Java+Exams",
-    },
-    {
-      id: 4,
-      title: "Business Law - Contract Law Mind Maps",
-      courseCode: "LAW2001",
-      institution: "Stellenbosch University",
-      year: "Second Year",
-      type: "Mind Maps",
-      faculty: "Law",
-      price: 45,
-      format: "PDF",
-      pages: 12,
-      rating: 4.7,
-      reviews: 15,
-      downloads: 67,
-      seller: "Emma L.",
-      description: "Visual mind maps covering all aspects of contract law with case studies.",
-      preview: true,
-      verified: false,
-      helpful: 43,
-      cover: "/placeholder.svg?height=300&width=200&text=Law+Mind+Maps",
-    },
-    {
-      id: 5,
-      title: "Engineering Mathematics Formula Sheet",
-      courseCode: "MAT2001",
-      institution: "Tshwane University of Technology (TUT)",
-      year: "Second Year",
-      type: "Formula Sheets",
-      faculty: "Engineering & Technology",
-      price: 25,
-      format: "PDF",
-      pages: 8,
-      rating: 4.5,
-      reviews: 32,
-      downloads: 198,
-      seller: "David R.",
-      description: "Essential formulas and equations for engineering mathematics with examples.",
-      preview: true,
-      verified: true,
-      helpful: 134,
-      cover: "/placeholder.svg?height=300&width=200&text=Math+Formulas",
-    },
-    {
-      id: 6,
-      title: "Human Anatomy - Complete Lecture Notes",
-      courseCode: "ANA1001",
-      institution: "University of KwaZulu-Natal (UKZN)",
-      year: "First Year",
-      type: "Lecture Notes",
-      faculty: "Health Sciences",
-      price: 95,
-      format: "PDF",
-      pages: 89,
-      rating: 4.8,
-      reviews: 27,
-      downloads: 145,
-      seller: "Lisa P.",
-      description: "Comprehensive lecture notes with diagrams and detailed explanations.",
-      preview: true,
-      verified: true,
-      helpful: 112,
-      cover: "/placeholder.svg?height=300&width=200&text=Anatomy+Notes",
-    },
-  ]
+  // Fetch real notes from database
+  const [notes, setNotes] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filteredNotes = sampleNotes.filter((note) => {
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/products?category=Notes')
+        if (response.ok) {
+          const data = await response.json()
+          setNotes(data.products || [])
+        } else {
+          setNotes([])
+        }
+      } catch (error) {
+        console.error('Error fetching notes:', error)
+        setNotes([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchNotes()
+  }, [])
+
+  const filteredNotes = notes.filter((note) => {
     const matchesSearch =
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -305,7 +174,7 @@ export default function NotesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Institutions</SelectItem>
-                      {institutions.map((institution) => (
+                      {SOUTH_AFRICAN_INSTITUTIONS.map((institution) => (
                         <SelectItem key={institution} value={institution}>
                           {institution}
                         </SelectItem>
@@ -360,7 +229,11 @@ export default function NotesPage() {
 
                 {/* Free Only */}
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="free-only" checked={showFreeOnly} onCheckedChange={setShowFreeOnly} />
+                  <Checkbox
+                    id="free-only"
+                    checked={showFreeOnly}
+                    onCheckedChange={(checked) => setShowFreeOnly(Boolean(checked))}
+                  />
                   <label htmlFor="free-only" className="text-sm font-medium">
                     Free downloads only
                   </label>
@@ -410,9 +283,11 @@ export default function NotesPage() {
                   <Shield className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                   <span>Option for free or paid downloads</span>
                 </div>
-                <Button className="w-full mt-4" size="sm">
-                  Upload Your Notes
-                </Button>
+                <Link href="/sell">
+                  <Button className="w-full mt-4" size="sm">
+                    Upload Your Notes
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
@@ -422,14 +297,29 @@ export default function NotesPage() {
             {/* Results Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-semibold">{filteredNotes.length} study materials found</h2>
-                <p className="text-gray-600 text-sm">Showing results for your search criteria</p>
+                <h2 className="text-xl font-semibold">
+                  {loading ? 'Loading...' : `${filteredNotes.length} study materials found`}
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  {loading ? 'Fetching study materials from database...' : 'Showing results for your search criteria'}
+                </p>
               </div>
             </div>
 
             {/* Notes Grid */}
             <div className="space-y-6">
-              {filteredNotes.map((note) => (
+              {loading ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading study materials...</p>
+                </div>
+              ) : filteredNotes.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No study materials found</h3>
+                  <p className="text-gray-500">Try adjusting your filters or search terms</p>
+                </div>
+              ) : (
+                filteredNotes.map((note) => (
                 <Card key={note.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row gap-4">
@@ -437,7 +327,7 @@ export default function NotesPage() {
                       <div className="md:w-32 flex-shrink-0">
                         <div className="relative h-40 md:h-48 w-full rounded-md overflow-hidden border">
                           <Image
-                            src={note.cover || "/placeholder.svg?height=300&width=200&text=Study+Material"}
+                            src={note.images?.[0] || "/placeholder.svg?height=300&width=200&text=Study+Material"}
                             alt={note.title}
                             fill
                             className="object-cover"
@@ -505,16 +395,13 @@ export default function NotesPage() {
                               <span className="text-sm font-medium">{note.rating}</span>
                               <span className="text-sm text-gray-600">({note.reviews} reviews)</span>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <Avatar className="h-6 w-6">
+                            <div className="flex items-center gap-2 mb-3">
+                              <Avatar className="h-8 w-8">
                                 <AvatarFallback className="text-xs">
-                                  {note.seller
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
+                                  {note.seller?.firstName?.[0] || ''}{note.seller?.lastName?.[0] || ''}
                                 </AvatarFallback>
                               </Avatar>
-                              <span>by {note.seller}</span>
+                              <span>by {note.seller?.name || `${note.seller?.firstName || ''} ${note.seller?.lastName || ''}`.trim() || 'Anonymous'}</span>
                             </div>
                           </div>
                         </div>
@@ -531,16 +418,20 @@ export default function NotesPage() {
                         </div>
 
                         <div className="space-y-2">
-                          {note.preview && (
-                            <Button variant="outline" size="sm" className="w-full">
-                              <Eye className="h-4 w-4 mr-2" />
-                              Preview
-                            </Button>
+                          {note.pdfFile && (
+                            <Link href={`/product/${note.id}`}>
+                              <Button variant="outline" size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </Button>
+                            </Link>
                           )}
-                          <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                            <Download className="h-4 w-4 mr-2" />
-                            {note.price === 0 ? "Download" : "Buy Now"}
-                          </Button>
+                          <Link href={`/product/${note.id}`}>
+                            <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                              <Download className="h-4 w-4 mr-2" />
+                              {note.price === 0 ? "Download" : "Buy Now"}
+                            </Button>
+                          </Link>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm" className="flex-1">
                               <MessageCircle className="h-4 w-4 mr-1" />
@@ -567,13 +458,14 @@ export default function NotesPage() {
                           <span>Helpful</span>
                         </button>
                       </div>
-                      <Link href={`/categories/notes/${note.id}`} className="text-purple-600 hover:underline">
+                      <Link href={`/product/${note.id}`} className="text-purple-600 hover:underline">
                         View Details →
                       </Link>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))
+              )}
             </div>
 
             {/* Pagination */}

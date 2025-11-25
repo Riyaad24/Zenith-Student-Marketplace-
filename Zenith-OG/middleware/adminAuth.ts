@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
-import { isAdminEmail, extractStudentNumber, isInAllowlist } from '@/lib/admin-auth'
+import { isAdminEmail, extractStudentNumber, isInAllowlist, getAdminFromRequest, AdminUser } from '@/lib/admin-auth'
 
 export interface AdminAuthResult {
   isAuthorized: boolean
   adminId?: string
   userId?: string
   email?: string
+  admin?: AdminUser | null
   error?: string
 }
 
@@ -27,8 +28,8 @@ export async function adminAuth(request: NextRequest): Promise<AdminAuthResult> 
       return { isAuthorized: false, error: 'No authentication token provided' }
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || 'fallback-secret') as any
+    // Verify JWT token (use same secret as login/register routes)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any
     
     if (!decoded.userId || !decoded.email) {
       return { isAuthorized: false, error: 'Invalid token payload' }
@@ -36,21 +37,30 @@ export async function adminAuth(request: NextRequest): Promise<AdminAuthResult> 
 
     const email = decoded.email.toLowerCase()
     
-    // Check if email matches admin pattern
-    if (!isAdminEmail(email)) {
-      return { isAuthorized: false, error: 'Email does not match admin pattern' }
-    }
-
-    // Extract student number from email
-    const studentNumber = extractStudentNumber(email)
+    // Extract student number from email if it matches the admin email pattern.
+    // Note: we do NOT require the admin email to match a specific pattern here —
+    // admins can be linked in the `admins` table by userId, or allowed via allowlists.
+    const studentNumber = isAdminEmail(email) ? extractStudentNumber(email) : null
     
     // Check allowlists first (ENV vars)
     if (isInAllowlist(email, studentNumber || undefined)) {
+      // Create a synthetic admin object granting full permissions for allowlisted users
+      const allowlistAdmin: AdminUser = {
+        id: decoded.userId,
+        email,
+        firstName: null,
+        lastName: null,
+        adminId: 'allowlist',
+        permissions: ['*'],
+        isActive: true
+      }
+
       return { 
         isAuthorized: true, 
         userId: decoded.userId, 
         email,
-        adminId: 'allowlist' // Special marker for allowlist users
+        adminId: 'allowlist', // Special marker for allowlist users
+        admin: allowlistAdmin
       }
     }
 
@@ -73,11 +83,37 @@ export async function adminAuth(request: NextRequest): Promise<AdminAuthResult> 
       return { isAuthorized: false, error: 'User is not registered as admin' }
     }
 
+    // Also fetch the richer admin user object (includes permissions) to pass to handlers
+    let adminUser = await getAdminFromRequest(request)
+
+    // If getAdminFromRequest didn't return an AdminUser (e.g., admin record isn't linked to the user record),
+    // construct a minimal AdminUser from the admins table record we fetched above so route handlers
+    // that call hasPermission(...) still receive the expected shape.
+    if (!adminUser) {
+      let permissions: string[] = []
+      try {
+        permissions = Array.isArray(admin.permissions) ? admin.permissions : JSON.parse(String(admin.permissions || '[]'))
+      } catch (e) {
+        permissions = []
+      }
+
+      adminUser = {
+        id: decoded.userId,
+        email,
+        firstName: null,
+        lastName: null,
+        adminId: admin.id,
+        permissions,
+        isActive: !!admin.isActive
+      }
+    }
+
     return { 
       isAuthorized: true, 
       adminId: admin.id,
       userId: decoded.userId, 
-      email
+      email,
+      admin: adminUser
     }
     
   } catch (error) {

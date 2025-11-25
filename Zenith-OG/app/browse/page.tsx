@@ -21,6 +21,7 @@ interface Product {
   price: number
   quantity: number
   image: string | null
+  images: string | null  // JSON array of image URLs
   condition: string
   location: string | null
   university: string | null
@@ -89,13 +90,28 @@ export default function BrowsePage() {
   const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist()
   const { user } = useAuth()
 
+  // Helper function to get the first image from product
+  const getProductImage = (product: Product): string => {
+    if (product.images) {
+      try {
+        const parsed = JSON.parse(product.images)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed[0]
+        }
+      } catch {
+        // If parsing fails, fall through
+      }
+    }
+    return product.image || "/placeholder.svg"
+  }
+
   const handleAddToCart = (product: Product) => {
     addItem({
       id: product.id,
       name: product.title,
       price: product.price,
       maxQuantity: product.quantity,
-      image: product.image || undefined,
+      image: getProductImage(product),
       sellerId: product.seller.id
     })
   }
@@ -232,141 +248,12 @@ export default function BrowsePage() {
       }
     } catch (error) {
       console.error('Error fetching products:', error)
-      
-      // Fallback to sample data
-      const sampleProducts: Product[] = [
-        {
-          id: "1",
-          title: "Advanced Chemistry Textbook",
-          description: "Comprehensive chemistry textbook for university students. Excellent condition with minimal highlighting.",
-          price: 650,
-          quantity: 3,
-          image: null,
-          condition: "Good",
-          location: "Cape Town",
-          university: "University of Cape Town",
-          averageRating: 4.5,
-          reviewCount: 12,
-          category: {
-            id: "textbooks",
-            name: "Textbooks",
-            slug: "textbooks"
-          },
-          seller: {
-            id: "seller1",
-            name: "Sarah Johnson",
-            avatar: null
-          }
-        },
-        {
-          id: "2",
-          title: "Scientific Calculator HP 50g",
-          description: "Graphing calculator perfect for engineering and mathematics courses. Includes original manual.",
-          price: 1200,
-          quantity: 1,
-          image: null,
-          condition: "Excellent",
-          location: "Johannesburg",
-          university: "University of the Witwatersrand",
-          averageRating: 4.8,
-          reviewCount: 8,
-          category: {
-            id: "electronics",
-            name: "Electronics",
-            slug: "electronics"
-          },
-          seller: {
-            id: "seller2",
-            name: "Michael Chen",
-            avatar: null
-          }
-        },
-        {
-          id: "3",
-          title: "Study Notes - Economics 101",
-          description: "Comprehensive study notes covering all major topics in introductory economics. Handwritten with diagrams.",
-          price: 150,
-          quantity: 5,
-          image: null,
-          condition: "Good",
-          location: "Durban",
-          university: "University of KwaZulu-Natal",
-          averageRating: 4.2,
-          reviewCount: 15,
-          category: {
-            id: "notes",
-            name: "Study Notes",
-            slug: "notes"
-          },
-          seller: {
-            id: "seller3",
-            name: "Priya Patel",
-            avatar: null
-          }
-        },
-        {
-          id: "4",
-          title: "Mathematics Tutoring Sessions",
-          description: "One-on-one mathematics tutoring for undergraduate students. Flexible scheduling available.",
-          price: 300,
-          quantity: 10,
-          image: null,
-          condition: "New",
-          location: "Stellenbosch",
-          university: "Stellenbosch University",
-          averageRating: 5.0,
-          reviewCount: 25,
-          category: {
-            id: "tutoring",
-            name: "Tutoring",
-            slug: "tutoring"
-          },
-          seller: {
-            id: "seller4",
-            name: "David Williams",
-            avatar: null
-          }
-        }
-      ]
-
-      // Filter sample products based on current filters for better UX
-      let filteredProducts = sampleProducts
-
-      if (searchTerm) {
-        filteredProducts = filteredProducts.filter(product =>
-          product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.description.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      }
-
-      if (selectedCategories.length > 0) {
-        filteredProducts = filteredProducts.filter(product =>
-          selectedCategories.includes(product.category.slug)
-        )
-      }
-
-      if (selectedConditions.length > 0) {
-        filteredProducts = filteredProducts.filter(product =>
-          selectedConditions.includes(product.condition)
-        )
-      }
-
-      if (selectedLocation && selectedLocation !== "all") {
-        filteredProducts = filteredProducts.filter(product =>
-          product.location === selectedLocation
-        )
-      }
-
-      filteredProducts = filteredProducts.filter(product =>
-        product.price >= priceRange[0] && product.price <= priceRange[1]
-      )
-
-      setProducts(filteredProducts)
+      setProducts([])
       setPagination({
         page: 1,
         limit: 12,
-        totalCount: filteredProducts.length,
-        totalPages: Math.ceil(filteredProducts.length / 12)
+        totalCount: 0,
+        totalPages: 0
       })
     } finally {
       setLoading(false)
@@ -568,7 +455,7 @@ export default function BrowsePage() {
                   <Card key={product.id} className="overflow-hidden hover-card">
                     <div className="relative h-48">
                       <Image
-                        src={product.image || "/placeholder.svg"}
+                        src={getProductImage(product)}
                         alt={product.title}
                         fill
                         className="object-cover"

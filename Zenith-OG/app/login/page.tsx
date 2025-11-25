@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useToast } from "@/components/ui/toast"
 import { useAuth } from "@/components/auth-provider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { signIn } from "@/app/actions/auth"
 import Link from "next/link"
 import Image from "next/image"
 import { InlineLoader } from "@/components/ui/loader"
@@ -16,35 +16,76 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  async function handleSubmit(formData: FormData) {
+  const searchParams = useSearchParams()
+  const toast = useToast()
+
+  useEffect(() => {
+    // If user arrived after signup, show success message
+    if (searchParams?.get('created') === '1') {
+      const msg = 'Account created — please sign in'
+      setMessage({ type: 'success', text: msg })
+      try {
+        toast.showToast('success', msg)
+      } catch (e) {}
+    }
+  }, [searchParams])
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     setLoading(true)
     setMessage(null)
 
     try {
-      const result = await signIn(formData)
+      const formData = new FormData(e.currentTarget)
+      const email = formData.get('email') as string
+      const password = formData.get('password') as string
 
-      if (result?.error) {
-        setMessage({ type: "error", text: result.error })
-      } else if (result?.success) {
-        setMessage({ type: "success", text: "Login successful! Redirecting..." })
-        
-        // Store token in localStorage if provided (for admin users)
-        if (result.token) {
-          localStorage.setItem('auth-token', result.token)
-        }
-        
-        // Refresh auth state
-        refreshUser()
-        // Redirect to appropriate page
-        setTimeout(() => {
-          router.push(result.redirectTo || '/')
-        }, 1000)
+      // Call API directly
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      })
+
+      const result = await response.json()
+
+      console.log('Login response:', result)
+      console.log('Response status:', response.status)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
+      if (!response.ok || result.error) {
+        setMessage({ type: "error", text: result.error || 'Login failed' })
+        setLoading(false)
+        return
       }
-    } catch (error) {
-      setMessage({ type: "error", text: "An unexpected error occurred" })
-    }
 
-    setLoading(false)
+      setMessage({ type: "success", text: "Login successful! Redirecting..." })
+      
+      // Store token in localStorage if provided
+      if (result.token) {
+        localStorage.setItem('auth-token', result.token)
+        console.log('Token stored in localStorage')
+      }
+      
+      // Refresh auth state
+      console.log('About to refresh user...')
+      await refreshUser()
+      console.log('User refresh complete')
+      
+      // Redirect with full page reload
+      setTimeout(() => {
+        console.log('Redirecting to:', result.redirect || '/')
+        window.location.href = result.redirect || '/'
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('Login error:', error)
+      setMessage({ type: "error", text: "An unexpected error occurred" })
+      setLoading(false)
+    }
   }
 
   return (
@@ -91,7 +132,7 @@ export default function LoginPage() {
             <p className="text-center text-sm text-gray-600">Welcome back to Zenith Marketplace</p>
           </CardHeader>
           <CardContent>
-          <form action={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
                 Student Email Address

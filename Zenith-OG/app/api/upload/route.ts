@@ -7,7 +7,7 @@ import { existsSync } from 'fs'
 import { prisma } from '@/lib/prisma'
 import { validateVerificationFile } from '@/lib/validation'
 
-const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 interface JWTPayload {
   userId: string
@@ -17,15 +17,19 @@ interface JWTPayload {
 async function getAuthenticatedUser(request: NextRequest) {
   try {
     const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    const token = cookieStore.get('auth-token')?.value
+
+    console.log('Upload API: Token exists?', !!token)
 
     if (!token) {
       return null
     }
 
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    console.log('Upload API: Token decoded successfully for user:', decoded.userId)
     return decoded
   } catch (error) {
+    console.error('Upload API: Auth error:', error)
     return null
   }
 }
@@ -34,9 +38,14 @@ export async function POST(request: NextRequest) {
   try {
     // Check authentication
     const user = await getAuthenticatedUser(request)
+    
+    console.log('Upload API: Authentication check:', user ? 'Authenticated' : 'Not authenticated')
+    
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('Upload API: User authenticated:', user.userId)
 
     // Parse form data
     const formData = await request.formData()

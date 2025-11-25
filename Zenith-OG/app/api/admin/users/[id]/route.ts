@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAdminAuth } from '@/middleware/adminAuth'
@@ -82,6 +83,13 @@ async function handleUserGet(
         location: user.location,
         bio: user.bio,
         verified: user.verified,
+        profilePicture: user.profilePicture,
+        studentCardImage: user.studentCardImage,
+        idDocumentImage: user.idDocumentImage,
+        documentsUploaded: user.documentsUploaded,
+        adminVerified: user.adminVerified,
+        verificationNotes: user.verificationNotes,
+        verifiedAt: user.verifiedAt,
         isAdmin: !!user.admin,
         roles: user.roleAssignments.map(ra => ra.role.name),
         security: user.security,
@@ -138,7 +146,10 @@ async function handleUserPut(
           phone: updateData.phone,
           location: updateData.location,
           bio: updateData.bio,
-          verified: updateData.verified
+          verified: updateData.verified,
+          adminVerified: updateData.adminVerified,
+          verificationNotes: updateData.verificationNotes,
+          verifiedAt: updateData.adminVerified && !currentUser.adminVerified ? new Date() : currentUser.verifiedAt
         },
         include: {
           roleAssignments: {
@@ -155,6 +166,19 @@ async function handleUserPut(
             accountLocked: updateData.accountLocked,
             lockedUntil: updateData.accountLocked ? null : undefined,
             failedLoginAttempts: updateData.accountLocked ? 0 : undefined
+          }
+        })
+      }
+
+      // Send notification if user was just verified
+      if (updateData.adminVerified && !currentUser.adminVerified) {
+        await tx.notification.create({
+          data: {
+            userId: params.id,
+            type: 'verification_approved',
+            title: '✅ Account Verified!',
+            message: 'Congratulations! Your verification documents have been reviewed and approved by our admin team. Your account is now fully verified and you have access to all marketplace features.',
+            read: false
           }
         })
       }
@@ -222,9 +246,47 @@ async function handleUserDelete(
       return NextResponse.json({ error: 'Cannot delete other admin users' }, { status: 403 })
     }
 
-    // Delete user (cascading deletes will handle related records)
-    await prisma.user.delete({
-      where: { id: params.id }
+    // Delete related records first to avoid foreign key constraint errors
+    await prisma.$transaction(async (tx) => {
+      // Delete user's products and related data
+      await tx.review.deleteMany({ where: { userId: params.id } })
+      await tx.wishlistItem.deleteMany({ where: { userId: params.id } })
+      await tx.cartItem.deleteMany({ where: { userId: params.id } })
+      await tx.notification.deleteMany({ where: { userId: params.id } })
+      await tx.address.deleteMany({ where: { userId: params.id } })
+      
+      // Delete messages
+      await tx.message.deleteMany({
+        where: {
+          OR: [
+            { senderId: params.id },
+            { receiverId: params.id }
+          ]
+        }
+      })
+      
+      // Delete orders
+      await tx.order.deleteMany({ where: { userId: params.id } })
+      
+      // Delete products
+      await tx.product.deleteMany({ where: { sellerId: params.id } })
+      
+      // Delete security-related records
+      await tx.securityAuditLog.deleteMany({ where: { userId: params.id } })
+      await tx.dataAccessLog.deleteMany({ where: { userId: params.id } })
+      await tx.userSession.deleteMany({ where: { userId: params.id } })
+      await tx.accountSecurity.deleteMany({ where: { userId: params.id } })
+      
+      // Delete admin record if exists
+      await tx.admin.deleteMany({ where: { userId: params.id } })
+      
+      // Delete role assignments (should cascade but delete explicitly for safety)
+      await tx.userRoleAssignment.deleteMany({ where: { userId: params.id } })
+      
+      // Finally delete the user
+      await tx.user.delete({
+        where: { id: params.id }
+      })
     })
 
     // Log admin action

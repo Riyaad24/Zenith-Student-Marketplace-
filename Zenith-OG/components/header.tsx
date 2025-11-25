@@ -338,13 +338,30 @@ export default function Header() {
                 {isDropdownOpen && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                        {user.isAdmin && (
+                          <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500 truncate">{user.email}</p>
                       {user.university && (
                         <p className="text-xs text-purple-600 font-medium mt-1">{user.university}</p>
                       )}
                     </div>
                     <div className="py-1">
+                      {user.isAdmin && (
+                        <Link 
+                          href="/admin/dashboard"
+                          className="flex items-center px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 mx-2 rounded-lg transition-colors duration-150 mb-1"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <GraduationCap className="h-4 w-4 mr-3" />
+                          Admin Dashboard
+                        </Link>
+                      )}
                       <Link 
                         href="/account"
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors duration-150"
@@ -387,13 +404,30 @@ export default function Header() {
               {isDropdownOpen && (
                 <div className="md:hidden absolute right-4 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
                   <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-900">{user.firstName} {user.lastName}</p>
+                      {user.isAdmin && (
+                        <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">
+                          ADMIN
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500 truncate">{user.email}</p>
                     {user.university && (
                       <p className="text-xs text-purple-600 font-medium mt-1">{user.university}</p>
                     )}
                   </div>
                   <div className="py-1">
+                    {user.isAdmin && (
+                      <Link 
+                        href="/admin/dashboard"
+                        className="flex items-center px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 mx-2 rounded-lg transition-colors duration-150 mb-1"
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <GraduationCap className="h-4 w-4 mr-3" />
+                        Admin Dashboard
+                      </Link>
+                    )}
                     <Link 
                       href="/account"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors duration-150"

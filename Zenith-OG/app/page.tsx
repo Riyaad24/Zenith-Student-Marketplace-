@@ -2,16 +2,82 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { BookOpen, Laptop, MessageSquare, ShieldCheck, Users } from "lucide-react"
+import { BookOpen, Laptop, MessageSquare, ShieldCheck, Users, GraduationCap, FileText, Shield, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { useAuth } from "@/components/auth-provider"
 import StatsCounter from "@/components/stats-counter"
+import { useScrollReveal } from "./hooks/useScrollReveal"
+import "./scroll-reveal.css"
+import { useEffect, useState } from "react"
 
 export default function Home() {
   const { user, loading } = useAuth()
+  const featuresRef = useScrollReveal()
+  const howItWorksRef = useScrollReveal()
+  const ctaRef = useScrollReveal()
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false)
+
+  // Fetch user profile to check verification status
+  useEffect(() => {
+    if (user && !loading) {
+      fetch('/api/profile', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.user) {
+            setUserProfile(data.user)
+            // Show banner if not uploaded documents and not dismissed
+            const dismissed = localStorage.getItem('home-verification-dismissed')
+            setShowVerificationBanner(!data.user.documentsUploaded && !dismissed)
+          }
+        })
+        .catch(err => console.error('Failed to fetch profile:', err))
+    }
+  }, [user, loading])
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Verification Banner - Shows for logged-in unverified users */}
+      {showVerificationBanner && user && userProfile && !userProfile.documentsUploaded && (
+        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Shield className="h-6 w-6" />
+                <div>
+                  <p className="font-semibold text-lg">Complete Your Account Verification</p>
+                  <p className="text-sm text-yellow-50">
+                    Submit your verification documents to unlock full marketplace access and build trust with other students.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link href="/account?tab=verification">
+                  <Button 
+                    variant="secondary" 
+                    className="bg-white text-orange-600 hover:bg-yellow-50 font-semibold"
+                  >
+                    Verify Now
+                  </Button>
+                </Link>
+                <button
+                  onClick={() => {
+                    setShowVerificationBanner(false)
+                    localStorage.setItem('home-verification-dismissed', 'true')
+                  }}
+                  className="text-white hover:text-yellow-100 p-1"
+                  aria-label="Dismiss"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section with Better Space Utilization */}
       <section className="relative w-full min-h-[95vh] flex items-center overflow-hidden bg-gradient-to-br from-purple-50 via-white to-purple-100" role="banner">        
         {/* Decorative elements */}
@@ -34,12 +100,13 @@ export default function Home() {
               </div>
               
               {/* Action buttons with much better presence */}
-              <div className="flex flex-col gap-6 sm:flex-row sm:justify-center lg:justify-start items-center pt-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:justify-center lg:justify-start items-center pt-6">
                 {!loading && !user && (
                   <Link href="/register" className="w-full sm:w-auto">
                     <Button 
                       size="lg" 
-                      className="bg-purple-600 text-white hover:bg-purple-700 focus:ring-4 focus:ring-purple-300 px-12 py-6 rounded-2xl font-bold text-2xl transition-all duration-200 transform hover:scale-[1.02] shadow-xl hover:shadow-2xl w-full sm:w-auto"
+                      variant="outline"
+                      className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-8 py-5 rounded-2xl font-bold text-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto whitespace-nowrap"
                       aria-label="Create your account to start buying and selling"
                     >
                       Create Account
@@ -50,10 +117,20 @@ export default function Home() {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-12 py-6 rounded-2xl font-bold text-2xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto"
+                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-8 py-5 rounded-2xl font-bold text-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto whitespace-nowrap"
                     aria-label="Browse available products and services"
                   >
                     Browse Products
+                  </Button>
+                </Link>
+                <Link href="/categories" className="w-full sm:w-auto">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="border-3 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white focus:ring-4 focus:ring-purple-300 px-8 py-5 rounded-2xl font-bold text-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl w-full sm:w-auto whitespace-nowrap"
+                    aria-label="Explore all product categories"
+                  >
+                    Categories
                   </Button>
                 </Link>
               </div>
@@ -96,11 +173,81 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Tutoring and Study Notes Section */}
+      <section className="w-full py-16 md:py-20 bg-gradient-to-br from-purple-50 to-white">
+        <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+            {/* Tutoring Card */}
+            <Link href="/categories/tutoring">
+              <div className="group relative overflow-hidden rounded-3xl bg-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-purple-100 hover:border-purple-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16"></div>
+                <div className="relative p-8 md:p-10">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 shadow-lg group-hover:shadow-purple-300 transition-shadow duration-300">
+                      <MessageSquare className="h-8 w-8 md:h-10 md:w-10 text-white" />
+                    </div>
+                    <div className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
+                      Popular
+                    </div>
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 group-hover:text-purple-700 transition-colors duration-300">
+                    Tutoring Services
+                  </h3>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
+                    Find experienced tutors or offer your expertise. Connect with students for one-on-one or group tutoring sessions across all subjects.
+                  </p>
+                  <div className="flex items-center text-purple-600 font-semibold text-lg group-hover:translate-x-2 transition-transform duration-300">
+                    Browse Tutors
+                    <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </Link>
+
+            {/* Study Notes Card */}
+            <Link href="/categories/notes">
+              <div className="group relative overflow-hidden rounded-3xl bg-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] border-2 border-purple-100 hover:border-purple-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/30 rounded-full blur-2xl -mr-16 -mt-16"></div>
+                <div className="relative p-8 md:p-10">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 shadow-lg group-hover:shadow-purple-300 transition-shadow duration-300">
+                      <FileText className="h-8 w-8 md:h-10 md:w-10 text-white" />
+                    </div>
+                    <div className="px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
+                      New
+                    </div>
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 group-hover:text-purple-700 transition-colors duration-300">
+                    Study Notes & Guides
+                  </h3>
+                  <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-6">
+                    Access comprehensive class notes, study guides, and past exam papers shared by top-performing students at your university.
+                  </p>
+                  <div className="flex items-center text-purple-600 font-semibold text-lg group-hover:translate-x-2 transition-transform duration-300">
+                    Browse Notes
+                    <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section with Animated Counters */}
       <StatsCounter />
 
       {/* Features Section with Enhanced Scaling */}
-      <section id="features" className="w-full py-20 md:py-28 lg:py-36 bg-white" role="region" aria-labelledby="features-heading">
+      <section 
+        ref={featuresRef.ref}
+        className={`w-full py-20 md:py-28 lg:py-36 bg-white scroll-reveal ${featuresRef.isRevealed ? 'revealed' : ''}`} 
+        role="region" 
+        aria-labelledby="features-heading"
+      >
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
           <div className="flex flex-col items-center justify-center space-y-6 text-center mb-20">
             <div className="space-y-6">
@@ -186,7 +333,12 @@ export default function Home() {
       </section>
 
       {/* How It Works Section with Enhanced Scaling */}
-      <section className="w-full py-20 md:py-28 lg:py-36 bg-gray-50" role="region" aria-labelledby="how-it-works-heading">
+      <section 
+        ref={howItWorksRef.ref}
+        className={`w-full py-20 md:py-28 lg:py-36 bg-gray-50 scroll-reveal ${howItWorksRef.isRevealed ? 'revealed' : ''}`} 
+        role="region" 
+        aria-labelledby="how-it-works-heading"
+      >
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
           <div className="flex flex-col items-center justify-center space-y-6 text-center mb-20">
             <div className="space-y-6">
@@ -237,7 +389,12 @@ export default function Home() {
       </section>
 
       {/* Call to Action Section with Enhanced Scaling */}
-      <section className="w-full py-20 md:py-28 lg:py-36 bg-gradient-to-r from-purple-600 to-purple-800" role="region" aria-labelledby="cta-heading">
+      <section 
+        ref={ctaRef.ref}
+        className={`w-full py-20 md:py-28 lg:py-36 bg-gradient-to-r from-purple-600 to-purple-800 scroll-reveal ${ctaRef.isRevealed ? 'revealed' : ''}`} 
+        role="region" 
+        aria-labelledby="cta-heading"
+      >
         <div className="container px-8 md:px-12 mx-auto max-w-[1400px]">
           <div className="flex flex-col items-center justify-center space-y-8 text-center">
             <div className="space-y-6">
