@@ -5,19 +5,38 @@ const prisma = new PrismaClient()
 
 // Team admin accounts
 const teamAdmins = [
-  { firstName: 'Riyaad', lastName: 'Dollie', email: '402306532ads@my.richfield.ac.za', password: 'StudentPass123!', studentNumber: '402306532' },
-  { firstName: 'Katlego', lastName: 'Mthimkulu', email: '402306606ads@my.richfield.ac.za', password: 'Katlego@21', studentNumber: '402306606' },
-  { firstName: 'Zukhanye', lastName: 'May', email: '402306545ads@my.richfield.ac.za', password: 'Zukhanye1.', studentNumber: '402306545' },
-  { firstName: 'Lethabo', lastName: 'Maesela', email: '402306346ads@my.richfield.ac.za', password: 'Lethabo700#', studentNumber: '402306346' },
-  { firstName: 'Khumoetsile', lastName: 'Mmatli', email: '402306701ads@my.richfield.ac.za', password: 'Khumo@101', studentNumber: '402306701' },
-  { firstName: 'Rose', lastName: 'Madhlalati', email: '402306684ads@my.richfield.ac.za', password: 'Lesedi@_40%', studentNumber: '402306684' },
-  { firstName: 'Lilitha', lastName: 'Sobuza', email: '402306756ads@my.richfield.ac.za', password: 'Lilitha060', studentNumber: '402306756' },
-  { firstName: 'Walter', lastName: 'Hlahla', email: '402306613ads@my.richfield.ac.za', password: 'KARAbo@09', studentNumber: '402306613' },
-  { firstName: 'Mugwambani', lastName: 'Ndzalama', email: '402306709ads@my.richfield.ac.za', password: 'Skyler@21', studentNumber: '402306709' },
-  { firstName: 'Tshwanelo', lastName: 'Dise', email: '402306367ads@my.richfield.ac.za', password: 'Thato@14', studentNumber: '402306367' },
-  { firstName: 'Sbonelo', lastName: 'Ndengu', email: '402306198ads@my.richfield.ac.za', password: 'DTbi22#$', studentNumber: '402306198' },
-  { firstName: 'Ntlakuso', lastName: 'Maluleke', email: '402306695ads@my.richfield.ac.za', password: 'A2d4c', studentNumber: '402306695' },
-  { firstName: 'Raymundo', lastName: 'Rodnell', email: '402411533ads@my.richfield.ac.za', password: 'cl@yton123', studentNumber: '402411533' }
+// Sanitized sample seed file for production-safe commits.
+// This file provides example data structure without real user PII or passwords.
+
+const sampleUsers = [
+  { firstName: 'Sample', lastName: 'Student', email: 'sample1@example.com', password: 'SamplePass123!', studentNumber: 'SAMPLE001' },
+  { firstName: 'Example', lastName: 'User', email: 'sample2@example.com', password: 'ExamplePass123!', studentNumber: 'SAMPLE002' }
+]
+
+async function seed(prisma) {
+  const bcrypt = require('bcrypt')
+  const salt = await bcrypt.genSalt(12)
+
+  for (const u of sampleUsers) {
+    const passwordHash = await bcrypt.hash(u.password, salt)
+    await prisma.user.create({
+      data: {
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        studentNumber: u.studentNumber,
+        // store hash in separate security table depending on your schema
+        security: {
+          create: { passwordHash }
+        }
+      }
+    })
+  }
+
+  console.log('✅ Seeded sample users (sanitized).')
+}
+
+module.exports = { seed }
 ]
 
 async function seedDatabase() {

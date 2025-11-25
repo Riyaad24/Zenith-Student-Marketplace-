@@ -30,7 +30,7 @@ async function addRiyaadAdmin() {
 
     // Update password
     const salt = await bcrypt.genSalt(12)
-    const passwordHash = await bcrypt.hash('Riyaad24**', salt)
+    const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'ChangeMeNow!', salt)
     
     await prisma.accountSecurity.update({
       where: { userId: riyaad.id },
@@ -40,7 +40,7 @@ async function addRiyaadAdmin() {
         emailVerified: true
       }
     })
-    console.log('✅ Password updated to: Riyaad24**')
+    console.log('✅ Admin password updated. Do NOT store plaintext passwords in code or logs.')
 
     // Check if admin record exists
     if (!riyaad.admin) {
@@ -110,7 +110,7 @@ async function addRiyaadAdmin() {
 
     console.log('\n🎉 Setup complete!')
     console.log('📧 Email: 402306532ads@my.richfield.ac.za')
-    console.log('🔑 Password: Riyaad24**')
+    console.log('🔑 Admin password set from environment variable or prompt (not printed).')
     console.log('👨‍💼 Role: Admin with full access')
     console.log('🔓 Permissions: All (*)')
 

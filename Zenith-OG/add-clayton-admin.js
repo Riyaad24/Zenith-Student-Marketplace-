@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function addClaytonAdmin() {
   try {
     const adminEmail = '402411533ads@my.richfield.ac.za';
-    const password = 'Cl@yton123';
+    const password = process.env.CLAYTON_ADMIN_PASSWORD || 'ChangeThisPassword!'
     const studentNumber = '402411533';
     
     console.log('🔍 Checking if user exists...');
@@ -41,7 +41,7 @@ async function addClaytonAdmin() {
         }
       });
       
-      console.log('🔑 Password updated');
+      console.log('🔑 Password updated (value not printed).')
       
       // Check if admin record exists
       if (!existingUser.admin) {
@@ -103,7 +103,7 @@ async function addClaytonAdmin() {
       
       console.log('\n✅ Admin setup complete!');
       console.log('Email:', adminEmail);
-      console.log('Password:', password);
+      console.log('Password set from environment variable or secure input (not printed).');
       console.log('Student Number:', studentNumber);
       return;
     }
