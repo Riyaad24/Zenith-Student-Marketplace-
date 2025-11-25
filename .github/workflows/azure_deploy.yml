@@ -1,0 +1,42 @@
+name: Azure Deploy (example)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          cd Zenith-OG
+          npm ci
+
+      - name: Build
+        run: |
+          cd Zenith-OG
+          npm run build
+
+      - name: Upload artifact for deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: zenith-build
+          path: Zenith-OG
+
+      - name: Deploy to Azure Web App (Zip Deploy)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'zenith-marketplace'
+          slot-name: 'production'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: 'Zenith-OG'
